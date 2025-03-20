@@ -30,12 +30,12 @@ const connectToMongoDB = async () => {
                 retryWrites: true, // Retry failed writes
             });
             console.log('Connected to MongoDB successfully');
-            return; // Exit the loop on success
+            return true; // Exit the loop on success
         } catch (error) {
             console.error(`Attempt ${attempt}/${maxRetries} - Failed to connect to MongoDB:`, error.message, error.stack);
             if (attempt === maxRetries) {
                 console.error('Max retries reached. Starting server without MongoDB connection...');
-                return; // Start the server even if MongoDB fails
+                return false;
             }
             await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
             attempt++;
@@ -43,8 +43,23 @@ const connectToMongoDB = async () => {
     }
 };
 
-// Call the connection function
-connectToMongoDB();
+// Background reconnection loop
+const startReconnectionLoop = () => {
+    setInterval(async () => {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is disconnected. Attempting to reconnect...');
+            await connectToMongoDB();
+        }
+    }, 30000); // Try to reconnect every 30 seconds
+};
+
+// Initialize MongoDB connection and start reconnection loop
+(async () => {
+    const connected = await connectToMongoDB();
+    if (!connected) {
+        startReconnectionLoop();
+    }
+})();
 
 // Health Check Endpoint
 app.get('/health', async (req, res) => {
@@ -142,9 +157,13 @@ const checkMongoDBConnection = (req, res, next) => {
     next();
 };
 
-// API Routes
-app.get('/api/learners', checkMongoDBConnection, async (req, res) => {
+// API Routes with fallback responses
+app.get('/api/learners', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is not connected. Returning empty learners list.');
+            return res.json([]);
+        }
         console.log('Fetching learners from MongoDB...');
         const learners = await Learner.find().lean().exec();
         console.log(`Fetched ${learners.length} learners`);
@@ -205,8 +224,12 @@ app.delete('/api/learners/:id', checkMongoDBConnection, async (req, res) => {
     }
 });
 
-app.get('/api/fees', checkMongoDBConnection, async (req, res) => {
+app.get('/api/fees', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is not connected. Returning empty fees list.');
+            return res.json([]);
+        }
         console.log('Fetching fees from MongoDB...');
         const fees = await Fee.find().lean().exec();
         console.log(`Fetched ${fees.length} fees`);
@@ -262,8 +285,12 @@ app.delete('/api/fees/:id', checkMongoDBConnection, async (req, res) => {
     }
 });
 
-app.get('/api/books', checkMongoDBConnection, async (req, res) => {
+app.get('/api/books', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is not connected. Returning empty books list.');
+            return res.json([]);
+        }
         console.log('Fetching books from MongoDB...');
         const books = await Book.find().lean().exec();
         console.log(`Fetched ${books.length} books`);
@@ -319,8 +346,12 @@ app.delete('/api/books/:id', checkMongoDBConnection, async (req, res) => {
     }
 });
 
-app.get('/api/classBooks', checkMongoDBConnection, async (req, res) => {
+app.get('/api/classBooks', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is not connected. Returning empty class books list.');
+            return res.json([]);
+        }
         console.log('Fetching class books from MongoDB...');
         const classBooks = await ClassBook.find().lean().exec();
         console.log(`Fetched ${classBooks.length} class books`);
@@ -376,8 +407,12 @@ app.delete('/api/classBooks/:id', checkMongoDBConnection, async (req, res) => {
     }
 });
 
-app.get('/api/feeStructure', checkMongoDBConnection, async (req, res) => {
+app.get('/api/feeStructure', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is not connected. Returning empty fee structure.');
+            return res.json({});
+        }
         console.log('Fetching fee structure from MongoDB...');
         const feeStructure = await FeeStructure.findOne().lean().exec();
         console.log('Fee structure fetched:', feeStructure);
@@ -408,8 +443,12 @@ app.post('/api/feeStructure', checkMongoDBConnection, async (req, res) => {
     }
 });
 
-app.get('/api/termSettings', checkMongoDBConnection, async (req, res) => {
+app.get('/api/termSettings', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is not connected. Returning default term settings.');
+            return res.json({ currentTerm: 'Term 1', currentYear: new Date().getFullYear() });
+        }
         console.log('Fetching term settings from MongoDB...');
         const termSettings = await TermSettings.findOne().lean().exec();
         console.log('Term settings fetched:', termSettings);
@@ -486,8 +525,12 @@ app.post('/api/newAcademicYear', checkMongoDBConnection, async (req, res) => {
     }
 });
 
-app.get('/api/learnerArchives/years', checkMongoDBConnection, async (req, res) => {
+app.get('/api/learnerArchives/years', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is not connected. Returning empty archived years list.');
+            return res.json([]);
+        }
         console.log('Fetching archived years from MongoDB...');
         const archives = await LearnerArchive.find({}, 'year').lean().exec();
         const years = archives.map(archive => archive.year);
@@ -499,8 +542,12 @@ app.get('/api/learnerArchives/years', checkMongoDBConnection, async (req, res) =
     }
 });
 
-app.get('/api/learnerArchives/:year', checkMongoDBConnection, async (req, res) => {
+app.get('/api/learnerArchives/:year', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB is not connected. Returning empty archived learners list.');
+            return res.json([]);
+        }
         console.log(`Fetching archived learners for year ${req.params.year}...`);
         const archive = await LearnerArchive.findOne({ year: parseInt(req.params.year) }).lean().exec();
         if (!archive) {
