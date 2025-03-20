@@ -1,12 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors'); // This line requires the cors package
-const twilio = require('twilio');
+const cors = require('cors');
 const path = require('path');
 
 const app = express();
-app.use(cors()); // Enable CORS for all routes
+app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
@@ -14,20 +13,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/school_manageme
     useNewUrlParser: true,
     useUnifiedTopology: true
 });
-
-// Twilio Client Setup
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-
-if (!accountSid || !authToken) {
-    console.error('Error: TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set in environment variables.');
-    process.exit(1); // Exit the process with an error code
-}
-
-const twilioClient = twilio(accountSid, authToken);
-
-// In-memory store for opted-out numbers (replace with a database in production)
-const optedOutNumbers = new Set();
 
 // Models
 const learnerSchema = new mongoose.Schema({
@@ -253,36 +238,6 @@ app.post('/api/newAcademicYear', async (req, res) => {
 
     await TermSettings.updateOne({}, { currentYear: currentYear + 1, currentTerm: 'Term 1' }, { upsert: true });
     res.sendStatus(200);
-});
-
-// Twilio Notification Endpoint
-app.post('/api/sendNotification', async (req, res) => {
-    const { phone, message } = req.body;
-
-    try {
-        const twilioMessage = await twilioClient.messages.create({
-            body: message,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: phone
-        });
-        res.json({ success: true, sid: twilioMessage.sid });
-    } catch (error) {
-        console.error('Error sending SMS:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Opt-Out Check Endpoint
-app.post('/api/checkOptOut', async (req, res) => {
-    const { phone } = req.body;
-    res.json(optedOutNumbers.has(phone));
-});
-
-// Opt-Out Endpoint
-app.post('/api/optOut', async (req, res) => {
-    const { phone } = req.body;
-    optedOutNumbers.add(phone);
-    res.json({ success: true, message: 'You have opted out of SMS notifications.' });
 });
 
 // Serve Static Files
