@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayLearners();
         } catch (error) {
             console.error('Error fetching learners:', error);
+            alert('Failed to fetch learners. Please try again later.');
         }
     }
 
@@ -92,6 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayFees();
         } catch (error) {
             console.error('Error fetching fees:', error);
+            alert('Failed to fetch fees. Please try again later.');
         }
     }
 
@@ -106,6 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayBooks();
         } catch (error) {
             console.error('Error fetching books:', error);
+            alert('Failed to fetch books. Please try again later.');
         }
     }
 
@@ -120,6 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayClassBooks();
         } catch (error) {
             console.error('Error fetching class books:', error);
+            alert('Failed to fetch class books. Please try again later.');
         }
     }
 
@@ -134,6 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadFeeStructure();
         } catch (error) {
             console.error('Error fetching fee structure:', error);
+            alert('Failed to fetch fee structure. Please try again later.');
         }
     }
 
@@ -154,6 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Fetched term settings:', { currentTerm, currentYear });
         } catch (error) {
             console.error('Error fetching term settings:', error);
+            alert('Failed to fetch term settings. Please try again later.');
         }
     }
 
@@ -170,6 +176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Fetched archived years:', years);
         } catch (error) {
             console.error('Error fetching archived years:', error);
+            alert('Failed to fetch archived years. Please try again later.');
         }
     }
 
