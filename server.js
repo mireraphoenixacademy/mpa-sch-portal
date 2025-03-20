@@ -18,6 +18,12 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/school_manageme
 // Twilio Client Setup
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+if (!accountSid || !authToken) {
+    console.error('Error: TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set in environment variables.');
+    process.exit(1); // Exit the process with an error code
+}
+
 const twilioClient = twilio(accountSid, authToken);
 
 // In-memory store for opted-out numbers (replace with a database in production)
