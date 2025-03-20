@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             feeStructure = await response.json() || {};
             console.log('Fetched fee structure:', feeStructure);
+            loadFeeStructure();
         } catch (error) {
             console.error('Error fetching fee structure:', error);
         }
@@ -457,18 +458,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('feeStructureForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newFeeStructure = {
-                playgroup: parseFloat(document.getElementById('playgroupFee').value),
-                pp1: parseFloat(document.getElementById('pp1Fee').value),
-                pp2: parseFloat(document.getElementById('pp2Fee').value),
-                grade1: parseFloat(document.getElementById('grade1Fee').value),
-                grade2: parseFloat(document.getElementById('grade2Fee').value),
-                grade3: parseFloat(document.getElementById('grade3Fee').value),
-                grade4: parseFloat(document.getElementById('grade4Fee').value),
-                grade5: parseFloat(document.getElementById('grade5Fee').value),
-                grade6: parseFloat(document.getElementById('grade6Fee').value),
-                grade7: parseFloat(document.getElementById('grade7Fee').value),
-                grade8: parseFloat(document.getElementById('grade8Fee').value),
-                grade9: parseFloat(document.getElementById('grade9Fee').value)
+                playgroup: parseFloat(document.getElementById('playgroupFee').value) || 0,
+                pp1: parseFloat(document.getElementById('pp1Fee').value) || 0,
+                pp2: parseFloat(document.getElementById('pp2Fee').value) || 0,
+                grade1: parseFloat(document.getElementById('grade1Fee').value) || 0,
+                grade2: parseFloat(document.getElementById('grade2Fee').value) || 0,
+                grade3: parseFloat(document.getElementById('grade3Fee').value) || 0,
+                grade4: parseFloat(document.getElementById('grade4Fee').value) || 0,
+                grade5: parseFloat(document.getElementById('grade5Fee').value) || 0,
+                grade6: parseFloat(document.getElementById('grade6Fee').value) || 0,
+                grade7: parseFloat(document.getElementById('grade7Fee').value) || 0,
+                grade8: parseFloat(document.getElementById('grade8Fee').value) || 0,
+                grade9: parseFloat(document.getElementById('grade9Fee').value) || 0
             };
             try {
                 const response = await fetch('/api/feeStructure', {
@@ -477,13 +478,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: JSON.stringify(newFeeStructure)
                 });
                 if (!response.ok) {
-                    throw new Error(`Failed to save fee structure: ${response.status} ${response.statusText}`);
+                    const errorText = await response.text();
+                    throw new Error(`Failed to save fee structure: ${response.status} ${response.statusText} - ${errorText}`);
                 }
-                await fetchFeeStructure();
+                const savedFeeStructure = await response.json();
+                feeStructure = savedFeeStructure;
+                console.log('Fee structure saved:', savedFeeStructure);
                 alert('Fee structure saved successfully');
+                loadFeeStructure();
             } catch (error) {
                 console.error('Error saving fee structure:', error);
-                alert('Failed to save fee structure. Please try again.');
+                alert(`Failed to save fee structure: ${error.message}. Please try again.`);
             }
         });
 
@@ -568,9 +573,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 e.preventDefault();
                 const sectionId = a.getAttribute('href').substring(1);
                 console.log('Navigating to section:', sectionId);
+
+                // Remove active class from all sidebar links and hide all sections
                 document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
-                a.classList.add('active');
                 document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+
+                // Add active class to the clicked link
+                a.classList.add('active');
+
+                // Show the target section
                 const targetSection = document.getElementById(sectionId);
                 if (targetSection) {
                     console.log('Section found, displaying:', sectionId);
@@ -579,6 +590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.error('Section not found:', sectionId);
                 }
 
+                // Load data for the specific section
                 if (sectionId === 'fees') {
                     console.log('Calling displayFees()');
                     displayFees();
