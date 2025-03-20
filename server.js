@@ -9,26 +9,37 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
+// MongoDB Connection with Retry Logic
 mongoose.set('strictQuery', false); // Suppress Mongoose strictQuery deprecation warning
 
 const connectToMongoDB = async () => {
-    try {
-        const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://mpaAdmin:sysAdmin368@cluster0.k9fva.mongodb.net/school_management?retryWrites=true&w=majority&appName=Cluster0';
-        console.log('Attempting to connect to MongoDB with URI:', mongoURI.replace(/:([^:@]+)@/, ':****@')); // Mask password in logs
-        await mongoose.connect(mongoURI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 5000, // 5 seconds to select a server
-            socketTimeoutMS: 5000, // 5 seconds for socket operations
-            connectTimeoutMS: 5000, // 5 seconds for initial connection
-            maxPoolSize: 5, // Reduce pool size for free tier
-            retryWrites: true, // Retry failed writes
-        });
-        console.log('Connected to MongoDB successfully');
-    } catch (error) {
-        console.error('Failed to connect to MongoDB:', error.message, error.stack);
-        process.exit(1); // Exit the process if MongoDB connection fails
+    const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://mpaAdmin:sysAdmin368@cluster0.k9fva.mongodb.net/school_management?retryWrites=true&w=majority&appName=Cluster0';
+    const maxRetries = 5;
+    let attempt = 1;
+
+    while (attempt <= maxRetries) {
+        try {
+            console.log(`Attempt ${attempt}/${maxRetries} - Connecting to MongoDB with URI:`, mongoURI.replace(/:([^:@]+)@/, ':****@')); // Mask password in logs
+            await mongoose.connect(mongoURI, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+                serverSelectionTimeoutMS: 5000, // 5 seconds to select a server
+                socketTimeoutMS: 5000, // 5 seconds for socket operations
+                connectTimeoutMS: 5000, // 5 seconds for initial connection
+                maxPoolSize: 5, // Reduce pool size for free tier
+                retryWrites: true, // Retry failed writes
+            });
+            console.log('Connected to MongoDB successfully');
+            return; // Exit the loop on success
+        } catch (error) {
+            console.error(`Attempt ${attempt}/${maxRetries} - Failed to connect to MongoDB:`, error.message, error.stack);
+            if (attempt === maxRetries) {
+                console.error('Max retries reached. Starting server without MongoDB connection...');
+                return; // Start the server even if MongoDB fails
+            }
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
+            attempt++;
+        }
     }
 };
 
@@ -39,10 +50,11 @@ connectToMongoDB();
 app.get('/health', async (req, res) => {
     try {
         const dbState = mongoose.connection.readyState; // 1 = connected, 0 = disconnected
-        if (dbState !== 1) {
-            throw new Error('MongoDB is not connected');
-        }
-        res.status(200).json({ status: 'OK', message: 'Server and MongoDB are running' });
+        res.status(200).json({
+            status: 'OK',
+            message: 'Server is running',
+            mongoDBConnected: dbState === 1 ? 'Yes' : 'No'
+        });
     } catch (error) {
         console.error('Health check failed:', error.message);
         res.status(500).json({ status: 'ERROR', message: 'Health check failed', error: error.message });
@@ -122,11 +134,19 @@ const FeeStructure = mongoose.model('FeeStructure', feeStructureSchema);
 const TermSettings = mongoose.model('TermSettings', termSettingsSchema);
 const LearnerArchive = mongoose.model('LearnerArchive', learnerArchiveSchema);
 
+// Middleware to check MongoDB connection
+const checkMongoDBConnection = (req, res, next) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.status(503).json({ error: 'Service Unavailable: MongoDB is not connected' });
+    }
+    next();
+};
+
 // API Routes
-app.get('/api/learners', async (req, res) => {
+app.get('/api/learners', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Fetching learners from MongoDB...');
-        const learners = await Learner.find().lean().exec(); // Use lean() for faster queries
+        const learners = await Learner.find().lean().exec();
         console.log(`Fetched ${learners.length} learners`);
         res.json(learners);
     } catch (error) {
@@ -135,11 +155,11 @@ app.get('/api/learners', async (req, res) => {
     }
 });
 
-app.post('/api/learners', async (req, res) => {
+app.post('/api/learners', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Adding new learner:', req.body);
         const learner = new Learner(req.body);
-        await learner.validate(); // Explicitly validate the learner object
+        await learner.validate();
         console.log('Learner validation passed');
         await learner.save();
         console.log('Learner added successfully:', learner);
@@ -153,7 +173,7 @@ app.post('/api/learners', async (req, res) => {
     }
 });
 
-app.put('/api/learners/:id', async (req, res) => {
+app.put('/api/learners/:id', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Updating learner with ID ${req.params.id}:`, req.body);
         const learner = await Learner.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -169,7 +189,7 @@ app.put('/api/learners/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/learners/:id', async (req, res) => {
+app.delete('/api/learners/:id', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Deleting learner with ID ${req.params.id}`);
         const learner = await Learner.findByIdAndDelete(req.params.id);
@@ -185,7 +205,7 @@ app.delete('/api/learners/:id', async (req, res) => {
     }
 });
 
-app.get('/api/fees', async (req, res) => {
+app.get('/api/fees', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Fetching fees from MongoDB...');
         const fees = await Fee.find().lean().exec();
@@ -197,7 +217,7 @@ app.get('/api/fees', async (req, res) => {
     }
 });
 
-app.post('/api/fees', async (req, res) => {
+app.post('/api/fees', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Adding new fee:', req.body);
         const fee = new Fee(req.body);
@@ -210,7 +230,7 @@ app.post('/api/fees', async (req, res) => {
     }
 });
 
-app.put('/api/fees/:id', async (req, res) => {
+app.put('/api/fees/:id', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Updating fee with ID ${req.params.id}:`, req.body);
         const fee = await Fee.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -226,7 +246,7 @@ app.put('/api/fees/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/fees/:id', async (req, res) => {
+app.delete('/api/fees/:id', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Deleting fee with ID ${req.params.id}`);
         const fee = await Fee.findByIdAndDelete(req.params.id);
@@ -242,7 +262,7 @@ app.delete('/api/fees/:id', async (req, res) => {
     }
 });
 
-app.get('/api/books', async (req, res) => {
+app.get('/api/books', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Fetching books from MongoDB...');
         const books = await Book.find().lean().exec();
@@ -254,7 +274,7 @@ app.get('/api/books', async (req, res) => {
     }
 });
 
-app.post('/api/books', async (req, res) => {
+app.post('/api/books', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Adding new book:', req.body);
         const book = new Book(req.body);
@@ -267,7 +287,7 @@ app.post('/api/books', async (req, res) => {
     }
 });
 
-app.put('/api/books/:id', async (req, res) => {
+app.put('/api/books/:id', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Updating book with ID ${req.params.id}:`, req.body);
         const book = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -283,7 +303,7 @@ app.put('/api/books/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/books/:id', async (req, res) => {
+app.delete('/api/books/:id', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Deleting book with ID ${req.params.id}`);
         const book = await Book.findByIdAndDelete(req.params.id);
@@ -299,7 +319,7 @@ app.delete('/api/books/:id', async (req, res) => {
     }
 });
 
-app.get('/api/classBooks', async (req, res) => {
+app.get('/api/classBooks', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Fetching class books from MongoDB...');
         const classBooks = await ClassBook.find().lean().exec();
@@ -311,7 +331,7 @@ app.get('/api/classBooks', async (req, res) => {
     }
 });
 
-app.post('/api/classBooks', async (req, res) => {
+app.post('/api/classBooks', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Adding new class book:', req.body);
         const classBook = new ClassBook(req.body);
@@ -324,7 +344,7 @@ app.post('/api/classBooks', async (req, res) => {
     }
 });
 
-app.put('/api/classBooks/:id', async (req, res) => {
+app.put('/api/classBooks/:id', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Updating class book with ID ${req.params.id}:`, req.body);
         const classBook = await ClassBook.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -340,7 +360,7 @@ app.put('/api/classBooks/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/classBooks/:id', async (req, res) => {
+app.delete('/api/classBooks/:id', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Deleting class book with ID ${req.params.id}`);
         const classBook = await ClassBook.findByIdAndDelete(req.params.id);
@@ -356,7 +376,7 @@ app.delete('/api/classBooks/:id', async (req, res) => {
     }
 });
 
-app.get('/api/feeStructure', async (req, res) => {
+app.get('/api/feeStructure', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Fetching fee structure from MongoDB...');
         const feeStructure = await FeeStructure.findOne().lean().exec();
@@ -368,7 +388,7 @@ app.get('/api/feeStructure', async (req, res) => {
     }
 });
 
-app.post('/api/feeStructure', async (req, res) => {
+app.post('/api/feeStructure', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Saving fee structure:', req.body);
         let feeStructure = await FeeStructure.findOne();
@@ -388,7 +408,7 @@ app.post('/api/feeStructure', async (req, res) => {
     }
 });
 
-app.get('/api/termSettings', async (req, res) => {
+app.get('/api/termSettings', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Fetching term settings from MongoDB...');
         const termSettings = await TermSettings.findOne().lean().exec();
@@ -400,7 +420,7 @@ app.get('/api/termSettings', async (req, res) => {
     }
 });
 
-app.post('/api/termSettings', async (req, res) => {
+app.post('/api/termSettings', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Saving term settings:', req.body);
         let termSettings = await TermSettings.findOne();
@@ -420,7 +440,7 @@ app.post('/api/termSettings', async (req, res) => {
     }
 });
 
-app.post('/api/newAcademicYear', async (req, res) => {
+app.post('/api/newAcademicYear', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Starting new academic year...');
         const termSettings = await TermSettings.findOne();
@@ -466,7 +486,7 @@ app.post('/api/newAcademicYear', async (req, res) => {
     }
 });
 
-app.get('/api/learnerArchives/years', async (req, res) => {
+app.get('/api/learnerArchives/years', checkMongoDBConnection, async (req, res) => {
     try {
         console.log('Fetching archived years from MongoDB...');
         const archives = await LearnerArchive.find({}, 'year').lean().exec();
@@ -479,7 +499,7 @@ app.get('/api/learnerArchives/years', async (req, res) => {
     }
 });
 
-app.get('/api/learnerArchives/:year', async (req, res) => {
+app.get('/api/learnerArchives/:year', checkMongoDBConnection, async (req, res) => {
     try {
         console.log(`Fetching archived learners for year ${req.params.year}...`);
         const archive = await LearnerArchive.findOne({ year: parseInt(req.params.year) }).lean().exec();
