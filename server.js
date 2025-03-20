@@ -19,10 +19,10 @@ const connectToMongoDB = async () => {
         await mongoose.connect(mongoURI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 60000, // 60 seconds
-            socketTimeoutMS: 90000, // 90 seconds
-            connectTimeoutMS: 30000, // 30 seconds for initial connection
-            maxPoolSize: 10, // Allow up to 10 concurrent connections
+            serverSelectionTimeoutMS: 5000, // 5 seconds to select a server
+            socketTimeoutMS: 5000, // 5 seconds for socket operations
+            connectTimeoutMS: 5000, // 5 seconds for initial connection
+            maxPoolSize: 5, // Reduce pool size for free tier
             retryWrites: true, // Retry failed writes
         });
         console.log('Connected to MongoDB successfully');
@@ -51,35 +51,35 @@ app.get('/health', async (req, res) => {
 
 // Models
 const learnerSchema = new mongoose.Schema({
-    admissionNo: String,
-    fullName: String,
-    gender: String,
-    dob: String,
-    grade: String,
-    assessmentNumber: String,
-    parentName: String,
-    parentPhone: String,
-    parentEmail: String
+    admissionNo: { type: String, required: true },
+    fullName: { type: String, required: true },
+    gender: { type: String, required: true },
+    dob: { type: String, required: true },
+    grade: { type: String, required: true },
+    assessmentNumber: { type: String },
+    parentName: { type: String, required: true },
+    parentPhone: { type: String, required: true },
+    parentEmail: { type: String, required: true }
 });
 
 const feeSchema = new mongoose.Schema({
-    admissionNo: String,
-    term: String,
-    amountPaid: Number,
-    balance: Number
+    admissionNo: { type: String, required: true },
+    term: { type: String, required: true },
+    amountPaid: { type: Number, required: true },
+    balance: { type: Number, required: true }
 });
 
 const bookSchema = new mongoose.Schema({
-    admissionNo: String,
-    subject: String,
-    bookTitle: String
+    admissionNo: { type: String, required: true },
+    subject: { type: String, required: true },
+    bookTitle: { type: String, required: true }
 });
 
 const classBookSchema = new mongoose.Schema({
-    bookNumber: String,
-    subject: String,
-    description: String,
-    totalBooks: Number
+    bookNumber: { type: String, required: true },
+    subject: { type: String, required: true },
+    description: { type: String, required: true },
+    totalBooks: { type: Number, required: true }
 });
 
 const feeStructureSchema = new mongoose.Schema({
@@ -98,18 +98,21 @@ const feeStructureSchema = new mongoose.Schema({
 });
 
 const termSettingsSchema = new mongoose.Schema({
-    currentTerm: String,
-    currentYear: Number
+    currentTerm: { type: String, required: true },
+    currentYear: { type: Number, required: true }
 });
 
 const learnerArchiveSchema = new mongoose.Schema({
-    year: Number,
+    year: { type: Number, required: true },
     learners: [learnerSchema]
 });
 
 // Add indexes for better query performance
 learnerSchema.index({ admissionNo: 1 });
 feeSchema.index({ admissionNo: 1 });
+bookSchema.index({ admissionNo: 1 });
+classBookSchema.index({ bookNumber: 1 });
+learnerArchiveSchema.index({ year: 1 });
 
 const Learner = mongoose.model('Learner', learnerSchema);
 const Fee = mongoose.model('Fee', feeSchema);
@@ -123,7 +126,7 @@ const LearnerArchive = mongoose.model('LearnerArchive', learnerArchiveSchema);
 app.get('/api/learners', async (req, res) => {
     try {
         console.log('Fetching learners from MongoDB...');
-        const learners = await Learner.find();
+        const learners = await Learner.find().lean().exec(); // Use lean() for faster queries
         console.log(`Fetched ${learners.length} learners`);
         res.json(learners);
     } catch (error) {
@@ -136,7 +139,6 @@ app.post('/api/learners', async (req, res) => {
     try {
         console.log('Adding new learner:', req.body);
         const learner = new Learner(req.body);
-        console.log('Learner object created:', learner);
         await learner.validate(); // Explicitly validate the learner object
         console.log('Learner validation passed');
         await learner.save();
@@ -186,7 +188,7 @@ app.delete('/api/learners/:id', async (req, res) => {
 app.get('/api/fees', async (req, res) => {
     try {
         console.log('Fetching fees from MongoDB...');
-        const fees = await Fee.find();
+        const fees = await Fee.find().lean().exec();
         console.log(`Fetched ${fees.length} fees`);
         res.json(fees);
     } catch (error) {
@@ -243,7 +245,7 @@ app.delete('/api/fees/:id', async (req, res) => {
 app.get('/api/books', async (req, res) => {
     try {
         console.log('Fetching books from MongoDB...');
-        const books = await Book.find();
+        const books = await Book.find().lean().exec();
         console.log(`Fetched ${books.length} books`);
         res.json(books);
     } catch (error) {
@@ -300,7 +302,7 @@ app.delete('/api/books/:id', async (req, res) => {
 app.get('/api/classBooks', async (req, res) => {
     try {
         console.log('Fetching class books from MongoDB...');
-        const classBooks = await ClassBook.find();
+        const classBooks = await ClassBook.find().lean().exec();
         console.log(`Fetched ${classBooks.length} class books`);
         res.json(classBooks);
     } catch (error) {
@@ -357,7 +359,7 @@ app.delete('/api/classBooks/:id', async (req, res) => {
 app.get('/api/feeStructure', async (req, res) => {
     try {
         console.log('Fetching fee structure from MongoDB...');
-        const feeStructure = await FeeStructure.findOne();
+        const feeStructure = await FeeStructure.findOne().lean().exec();
         console.log('Fee structure fetched:', feeStructure);
         res.json(feeStructure || {});
     } catch (error) {
@@ -389,7 +391,7 @@ app.post('/api/feeStructure', async (req, res) => {
 app.get('/api/termSettings', async (req, res) => {
     try {
         console.log('Fetching term settings from MongoDB...');
-        const termSettings = await TermSettings.findOne();
+        const termSettings = await TermSettings.findOne().lean().exec();
         console.log('Term settings fetched:', termSettings);
         res.json(termSettings || { currentTerm: 'Term 1', currentYear: new Date().getFullYear() });
     } catch (error) {
@@ -467,7 +469,7 @@ app.post('/api/newAcademicYear', async (req, res) => {
 app.get('/api/learnerArchives/years', async (req, res) => {
     try {
         console.log('Fetching archived years from MongoDB...');
-        const archives = await LearnerArchive.find({}, 'year');
+        const archives = await LearnerArchive.find({}, 'year').lean().exec();
         const years = archives.map(archive => archive.year);
         console.log(`Fetched archived years: ${years}`);
         res.json(years);
@@ -480,7 +482,7 @@ app.get('/api/learnerArchives/years', async (req, res) => {
 app.get('/api/learnerArchives/:year', async (req, res) => {
     try {
         console.log(`Fetching archived learners for year ${req.params.year}...`);
-        const archive = await LearnerArchive.findOne({ year: parseInt(req.params.year) });
+        const archive = await LearnerArchive.findOne({ year: parseInt(req.params.year) }).lean().exec();
         if (!archive) {
             console.log(`Archive for year ${req.params.year} not found`);
             return res.status(404).json({ error: 'Archive not found' });
