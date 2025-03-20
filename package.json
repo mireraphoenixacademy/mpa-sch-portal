@@ -1,0 +1,21 @@
+{
+  "name": "school-management-system",
+  "version": "1.0.0",
+  "description": "A school management system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",  // Required for Render
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "mongoose": "^6.0.0",
+    "twilio": "^4.0.0",
+    "ejs": "^3.1.10"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
+  }
+}
