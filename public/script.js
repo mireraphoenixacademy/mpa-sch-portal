@@ -68,55 +68,107 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentYear = new Date().getFullYear();
 
     async function fetchLearners() {
-        const response = await fetch('/api/learners');
-        learners = await response.json();
-        displayLearners();
+        try {
+            const response = await fetch('/api/learners');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch learners: ${response.status} ${response.statusText}`);
+            }
+            learners = await response.json();
+            console.log('Fetched learners:', learners);
+            displayLearners();
+        } catch (error) {
+            console.error('Error fetching learners:', error);
+        }
     }
 
     async function fetchFees() {
-        const response = await fetch('/api/fees');
-        fees = await response.json();
-        displayFees();
+        try {
+            const response = await fetch('/api/fees');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch fees: ${response.status} ${response.statusText}`);
+            }
+            fees = await response.json();
+            console.log('Fetched fees:', fees);
+            displayFees();
+        } catch (error) {
+            console.error('Error fetching fees:', error);
+        }
     }
 
     async function fetchBooks() {
-        const response = await fetch('/api/books');
-        books = await response.json();
-        displayBooks();
+        try {
+            const response = await fetch('/api/books');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch books: ${response.status} ${response.statusText}`);
+            }
+            books = await response.json();
+            console.log('Fetched books:', books);
+            displayBooks();
+        } catch (error) {
+            console.error('Error fetching books:', error);
+        }
     }
 
     async function fetchClassBooks() {
-        const response = await fetch('/api/classBooks');
-        classBooks = await response.json();
-        displayClassBooks();
+        try {
+            const response = await fetch('/api/classBooks');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch class books: ${response.status} ${response.statusText}`);
+            }
+            classBooks = await response.json();
+            console.log('Fetched class books:', classBooks);
+            displayClassBooks();
+        } catch (error) {
+            console.error('Error fetching class books:', error);
+        }
     }
 
     async function fetchFeeStructure() {
-        const response = await fetch('/api/feeStructure');
-        feeStructure = await response.json() || {};
+        try {
+            const response = await fetch('/api/feeStructure');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch fee structure: ${response.status} ${response.statusText}`);
+            }
+            feeStructure = await response.json() || {};
+            console.log('Fetched fee structure:', feeStructure);
+        } catch (error) {
+            console.error('Error fetching fee structure:', error);
+        }
     }
 
     async function fetchTermSettings() {
-        const response = await fetch('/api/termSettings');
-        const settings = await response.json();
-        if (settings) {
-            currentTerm = settings.currentTerm;
-            currentYear = settings.currentYear;
+        try {
+            const response = await fetch('/api/termSettings');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch term settings: ${response.status} ${response.statusText}`);
+            }
+            const settings = await response.json();
+            if (settings) {
+                currentTerm = settings.currentTerm;
+                currentYear = settings.currentYear;
+            }
+            document.getElementById('currentTermYear').textContent = `${currentTerm} ${currentYear}`;
+            document.getElementById('currentTerm').value = currentTerm;
+            document.getElementById('currentYear').value = currentYear;
+            console.log('Fetched term settings:', { currentTerm, currentYear });
+        } catch (error) {
+            console.error('Error fetching term settings:', error);
         }
-        document.getElementById('currentTermYear').textContent = `${currentTerm} ${currentYear}`;
-        document.getElementById('currentTerm').value = currentTerm;
-        document.getElementById('currentYear').value = currentYear;
     }
 
     async function fetchArchivedYears() {
         try {
             const response = await fetch('/api/learnerArchives/years');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch archived years: ${response.status} ${response.statusText}`);
+            }
             const years = await response.json();
             const select = document.getElementById('learnerYearSelect');
             select.innerHTML = `<option value="${currentYear}">${currentYear} (Current)</option>` +
                 years.map(year => `<option value="${year}">${year}</option>`).join('');
-        } catch (err) {
-            console.error('Error fetching archived years:', err);
+            console.log('Fetched archived years:', years);
+        } catch (error) {
+            console.error('Error fetching archived years:', error);
         }
     }
 
@@ -148,14 +200,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 parentPhone: document.getElementById('parentPhone').value,
                 parentEmail: document.getElementById('parentEmail').value
             };
-            await fetch('/api/learners', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(learner)
-            });
-            await fetchLearners();
-            document.getElementById('learnerForm').reset();
-            document.getElementById('addLearnerForm').style.display = 'none';
+            try {
+                const response = await fetch('/api/learners', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(learner)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to add learner: ${response.status} ${response.statusText}`);
+                }
+                await fetchLearners();
+                document.getElementById('learnerForm').reset();
+                document.getElementById('addLearnerForm').style.display = 'none';
+            } catch (error) {
+                console.error('Error adding learner:', error);
+                alert('Failed to add learner. Please try again.');
+            }
         });
 
         // Edit Learner Form
@@ -172,13 +232,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 parentPhone: document.getElementById('editParentPhone').value,
                 parentEmail: document.getElementById('editParentEmail').value
             };
-            await fetch(`/api/learners/${learners[index]._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(learner)
-            });
-            await fetchLearners();
-            document.getElementById('editLearnerForm').style.display = 'none';
+            try {
+                const response = await fetch(`/api/learners/${learners[index]._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(learner)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to update learner: ${response.status} ${response.statusText}`);
+                }
+                await fetchLearners();
+                document.getElementById('editLearnerForm').style.display = 'none';
+            } catch (error) {
+                console.error('Error updating learner:', error);
+                alert('Failed to update learner. Please try again.');
+            }
         });
 
         // Fee Form
@@ -211,18 +279,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 balance
             };
 
-            const response = await fetch('/api/fees', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(fee)
-            });
-
-            if (response.ok) {
-                alert(`Fee added successfully for ${learner.fullName}! Balance: ${balance}`); // Notify user
+            try {
+                const response = await fetch('/api/fees', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fee)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to add fee: ${response.status} ${response.statusText}`);
+                }
+                alert(`Fee added successfully for ${learner.fullName}! Balance: ${balance}`);
                 await fetchFees();
                 document.getElementById('feeForm').reset();
                 document.getElementById('addFeeForm').style.display = 'none';
-            } else {
+            } catch (error) {
+                console.error('Error adding fee:', error);
                 alert('Failed to add fee. Please try again.');
             }
         });
@@ -258,17 +329,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 balance
             };
 
-            const response = await fetch(`/api/fees/${fees[index]._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(fee)
-            });
-
-            if (response.ok) {
-                alert(`Fee updated successfully for ${learner.fullName}! Balance: ${balance}`); // Notify user
+            try {
+                const response = await fetch(`/api/fees/${fees[index]._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fee)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to update fee: ${response.status} ${response.statusText}`);
+                }
+                alert(`Fee updated successfully for ${learner.fullName}! Balance: ${balance}`);
                 await fetchFees();
                 document.getElementById('editFeeForm').style.display = 'none';
-            } else {
+            } catch (error) {
+                console.error('Error updating fee:', error);
                 alert('Failed to update fee. Please try again.');
             }
         });
@@ -281,14 +355,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 subject: document.getElementById('subject').value,
                 bookTitle: document.getElementById('bookTitle').value
             };
-            await fetch('/api/books', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(book)
-            });
-            await fetchBooks();
-            document.getElementById('bookForm').reset();
-            document.getElementById('addBookForm').style.display = 'none';
+            try {
+                const response = await fetch('/api/books', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(book)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to add book: ${response.status} ${response.statusText}`);
+                }
+                await fetchBooks();
+                document.getElementById('bookForm').reset();
+                document.getElementById('addBookForm').style.display = 'none';
+            } catch (error) {
+                console.error('Error adding book:', error);
+                alert('Failed to add book. Please try again.');
+            }
         });
 
         // Edit Book Form
@@ -300,13 +382,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 subject: document.getElementById('editSubject').value,
                 bookTitle: document.getElementById('editBookTitle').value
             };
-            await fetch(`/api/books/${books[index]._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(book)
-            });
-            await fetchBooks();
-            document.getElementById('editBookForm').style.display = 'none';
+            try {
+                const response = await fetch(`/api/books/${books[index]._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(book)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to update book: ${response.status} ${response.statusText}`);
+                }
+                await fetchBooks();
+                document.getElementById('editBookForm').style.display = 'none';
+            } catch (error) {
+                console.error('Error updating book:', error);
+                alert('Failed to update book. Please try again.');
+            }
         });
 
         // Class Book Form
@@ -318,14 +408,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 description: document.getElementById('bookDescription').value,
                 totalBooks: parseInt(document.getElementById('totalBooks').value)
             };
-            await fetch('/api/classBooks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(classBook)
-            });
-            await fetchClassBooks();
-            document.getElementById('classBookForm').reset();
-            document.getElementById('addClassBookForm').style.display = 'none';
+            try {
+                const response = await fetch('/api/classBooks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(classBook)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to add class book: ${response.status} ${response.statusText}`);
+                }
+                await fetchClassBooks();
+                document.getElementById('classBookForm').reset();
+                document.getElementById('addClassBookForm').style.display = 'none';
+            } catch (error) {
+                console.error('Error adding class book:', error);
+                alert('Failed to add class book. Please try again.');
+            }
         });
 
         // Edit Class Book Form
@@ -338,13 +436,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 description: document.getElementById('editBookDescription').value,
                 totalBooks: parseInt(document.getElementById('editTotalBooks').value)
             };
-            await fetch(`/api/classBooks/${classBooks[index]._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(classBook)
-            });
-            await fetchClassBooks();
-            document.getElementById('editClassBookForm').style.display = 'none';
+            try {
+                const response = await fetch(`/api/classBooks/${classBooks[index]._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(classBook)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to update class book: ${response.status} ${response.statusText}`);
+                }
+                await fetchClassBooks();
+                document.getElementById('editClassBookForm').style.display = 'none';
+            } catch (error) {
+                console.error('Error updating class book:', error);
+                alert('Failed to update class book. Please try again.');
+            }
         });
 
         // Fee Structure Form
@@ -364,13 +470,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 grade8: parseFloat(document.getElementById('grade8Fee').value),
                 grade9: parseFloat(document.getElementById('grade9Fee').value)
             };
-            await fetch('/api/feeStructure', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newFeeStructure)
-            });
-            await fetchFeeStructure();
-            alert('Fee structure saved successfully');
+            try {
+                const response = await fetch('/api/feeStructure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newFeeStructure)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to save fee structure: ${response.status} ${response.statusText}`);
+                }
+                await fetchFeeStructure();
+                alert('Fee structure saved successfully');
+            } catch (error) {
+                console.error('Error saving fee structure:', error);
+                alert('Failed to save fee structure. Please try again.');
+            }
         });
 
         // Term Settings Form
@@ -380,21 +494,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentTerm: document.getElementById('currentTerm').value,
                 currentYear: parseInt(document.getElementById('currentYear').value)
             };
-            await fetch('/api/termSettings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings)
-            });
-            await fetchTermSettings();
-            alert('Term settings saved successfully');
+            try {
+                const response = await fetch('/api/termSettings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to save term settings: ${response.status} ${response.statusText}`);
+                }
+                await fetchTermSettings();
+                alert('Term settings saved successfully');
+            } catch (error) {
+                console.error('Error saving term settings:', error);
+                alert('Failed to save term settings. Please try again.');
+            }
         });
 
         // New Academic Year
         document.getElementById('newAcademicYearBtn')?.addEventListener('click', async () => {
             if (confirm('Are you sure you want to start a new academic year? This will archive the current year\'s data and update learners\' grades.')) {
-                await fetch('/api/newAcademicYear', { method: 'POST' });
-                await Promise.all([fetchLearners(), fetchTermSettings(), fetchArchivedYears()]);
-                alert('New academic year started successfully');
+                try {
+                    const response = await fetch('/api/newAcademicYear', { method: 'POST' });
+                    if (!response.ok) {
+                        throw new Error(`Failed to start new academic year: ${response.status} ${response.statusText}`);
+                    }
+                    await Promise.all([fetchLearners(), fetchTermSettings(), fetchArchivedYears()]);
+                    alert('New academic year started successfully');
+                } catch (error) {
+                    console.error('Error starting new academic year:', error);
+                    alert('Failed to start new academic year. Please try again.');
+                }
             }
         });
 
@@ -437,24 +567,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             a.addEventListener('click', (e) => {
                 e.preventDefault();
                 const sectionId = a.getAttribute('href').substring(1);
+                console.log('Navigating to section:', sectionId);
+                document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
+                a.classList.add('active');
                 document.querySelectorAll('section').forEach(s => s.style.display = 'none');
                 const targetSection = document.getElementById(sectionId);
                 if (targetSection) {
+                    console.log('Section found, displaying:', sectionId);
                     targetSection.style.display = 'block';
+                } else {
+                    console.error('Section not found:', sectionId);
                 }
 
                 if (sectionId === 'fees') {
+                    console.log('Calling displayFees()');
                     displayFees();
                 } else if (sectionId === 'learners') {
+                    console.log('Calling displayLearners()');
                     displayLearners();
                 } else if (sectionId === 'books') {
+                    console.log('Calling displayBooks()');
                     displayBooks();
                 } else if (sectionId === 'classBooks') {
+                    console.log('Calling displayClassBooks()');
                     displayClassBooks();
                 } else if (sectionId === 'feeStructure') {
+                    console.log('Calling loadFeeStructure()');
                     loadFeeStructure();
                 } else if (sectionId === 'dashboard') {
+                    console.log('Displaying dashboard');
                     document.getElementById('dashboard').style.display = 'block';
+                } else if (sectionId === 'transferRequests') {
+                    console.log('Displaying transferRequests');
+                    document.getElementById('transferRequests').style.display = 'block';
+                } else if (sectionId === 'termSettings') {
+                    console.log('Displaying termSettings');
+                    document.getElementById('termSettings').style.display = 'block';
                 }
 
                 sidebar.classList.remove('active');
@@ -527,11 +675,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const updatedFee = { ...existingFee, amountPaid: (existingFee.amountPaid || 0) + amount };
             const feePerTerm = feeStructure[learners.find(l => l.admissionNo === admissionNo).grade.replace(' ', '').toLowerCase()] || 0;
             updatedFee.balance = feePerTerm - updatedFee.amountPaid;
-            await fetch(`/api/fees/${existingFee._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedFee)
-            });
+            try {
+                const response = await fetch(`/api/fees/${existingFee._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedFee)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to update next term fee: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Error updating next term fee:', error);
+            }
         } else {
             const fee = {
                 admissionNo,
@@ -539,17 +694,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 amountPaid: amount,
                 balance: feeStructure[learners.find(l => l.admissionNo === admissionNo).grade.replace(' ', '').toLowerCase()] - amount
             };
-            await fetch('/api/fees', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(fee)
-            });
+            try {
+                const response = await fetch('/api/fees', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fee)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to add next term fee: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Error adding next term fee:', error);
+            }
         }
     }
 
     function displayLearners() {
         const tbody = document.querySelector('#learnersBody');
-        if (!tbody) return;
+        if (!tbody) {
+            console.error('learnersBody element not found');
+            return;
+        }
+        console.log('Populating learners table with data:', learners);
         tbody.innerHTML = '';
         learners.forEach((learner, index) => {
             const tr = document.createElement('tr');
@@ -573,7 +739,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function displayFees() {
         const tbody = document.querySelector('#feesBody');
-        if (!tbody) return;
+        if (!tbody) {
+            console.error('feesBody element not found');
+            return;
+        }
+        console.log('Populating fees table with data:', fees);
         tbody.innerHTML = '';
         if (fees.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6">No fee records available.</td></tr>';
@@ -598,7 +768,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function displayBooks() {
         const tbody = document.querySelector('#booksBody');
-        if (!tbody) return;
+        if (!tbody) {
+            console.error('booksBody element not found');
+            return;
+        }
+        console.log('Populating books table with data:', books);
         tbody.innerHTML = '';
         books.forEach((book, index) => {
             const tr = document.createElement('tr');
@@ -618,7 +792,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function displayClassBooks() {
         const tbody = document.querySelector('#classBooksBody');
-        if (!tbody) return;
+        if (!tbody) {
+            console.error('classBooksBody element not found');
+            return;
+        }
+        console.log('Populating class books table with data:', classBooks);
         tbody.innerHTML = '';
         classBooks.forEach((book, index) => {
             const tr = document.createElement('tr');
@@ -681,29 +859,61 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteLearner = async (id) => {
         if (confirm('Are you sure you want to delete this learner?')) {
-            await fetch(`/api/learners/${id}`, { method: 'DELETE' });
-            await fetchLearners();
+            try {
+                const response = await fetch(`/api/learners/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Failed to delete learner: ${response.status} ${response.statusText}`);
+                }
+                await fetchLearners();
+            } catch (error) {
+                console.error('Error deleting learner:', error);
+                alert('Failed to delete learner. Please try again.');
+            }
         }
     };
 
     window.deleteFee = async (id) => {
         if (confirm('Are you sure you want to delete this fee record?')) {
-            await fetch(`/api/fees/${id}`, { method: 'DELETE' });
-            await fetchFees();
+            try {
+                const response = await fetch(`/api/fees/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Failed to delete fee: ${response.status} ${response.statusText}`);
+                }
+                await fetchFees();
+            } catch (error) {
+                console.error('Error deleting fee:', error);
+                alert('Failed to delete fee. Please try again.');
+            }
         }
     };
 
     window.deleteBook = async (id) => {
         if (confirm('Are you sure you want to delete this book record?')) {
-            await fetch(`/api/books/${id}`, { method: 'DELETE' });
-            await fetchBooks();
+            try {
+                const response = await fetch(`/api/books/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Failed to delete book: ${response.status} ${response.statusText}`);
+                }
+                await fetchBooks();
+            } catch (error) {
+                console.error('Error deleting book:', error);
+                alert('Failed to delete book. Please try again.');
+            }
         }
     };
 
     window.deleteClassBook = async (id) => {
         if (confirm('Are you sure you want to delete this class book record?')) {
-            await fetch(`/api/classBooks/${id}`, { method: 'DELETE' });
-            await fetchClassBooks();
+            try {
+                const response = await fetch(`/api/classBooks/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Failed to delete class book: ${response.status} ${response.statusText}`);
+                }
+                await fetchClassBooks();
+            } catch (error) {
+                console.error('Error deleting class book:', error);
+                alert('Failed to delete class book. Please try again.');
+            }
         }
     };
 
