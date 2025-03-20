@@ -29,15 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('isLoggedIn', 'true');
             loginModal.style.display = 'none';
             mainApp.style.display = 'block';
-            await Promise.all([
-                fetchLearners(),
-                fetchFees(),
-                fetchBooks(),
-                fetchClassBooks(),
-                fetchFeeStructure(),
-                fetchTermSettings(),
-                fetchArchivedYears()
-            ]);
+            await loadInitialData();
             setupEventListeners();
         } else {
             alert('Invalid credentials');
@@ -67,117 +59,131 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentTerm = 'Term 1';
     let currentYear = new Date().getFullYear();
 
-    async function fetchLearners() {
+    async function loadInitialData() {
+        const errors = [];
         try {
-            const response = await fetch('/api/learners');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch learners: ${response.status} ${response.statusText}`);
-            }
-            learners = await response.json();
-            console.log('Fetched learners:', learners);
-            displayLearners();
+            await fetchLearners();
         } catch (error) {
-            console.error('Error fetching learners:', error);
-            alert('Failed to fetch learners. Please try again later.');
+            errors.push('learners');
         }
+        try {
+            await fetchFees();
+        } catch (error) {
+            errors.push('fees');
+        }
+        try {
+            await fetchBooks();
+        } catch (error) {
+            errors.push('books');
+        }
+        try {
+            await fetchClassBooks();
+        } catch (error) {
+            errors.push('class books');
+        }
+        try {
+            await fetchFeeStructure();
+        } catch (error) {
+            errors.push('fee structure');
+        }
+        try {
+            await fetchTermSettings();
+        } catch (error) {
+            errors.push('term settings');
+        }
+        try {
+            await fetchArchivedYears();
+        } catch (error) {
+            errors.push('archived years');
+        }
+        if (errors.length > 0) {
+            alert(`Failed to fetch the following data: ${errors.join(', ')}. Please try again later.`);
+        }
+    }
+
+    async function fetchLearners() {
+        console.log('Fetching learners...');
+        const response = await fetch('/api/learners');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch learners: ${response.status} ${response.statusText}`);
+        }
+        learners = await response.json();
+        console.log('Fetched learners:', learners);
+        displayLearners();
     }
 
     async function fetchFees() {
-        try {
-            const response = await fetch('/api/fees');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch fees: ${response.status} ${response.statusText}`);
-            }
-            fees = await response.json();
-            console.log('Fetched fees:', fees);
-            displayFees();
-        } catch (error) {
-            console.error('Error fetching fees:', error);
-            alert('Failed to fetch fees. Please try again later.');
+        console.log('Fetching fees...');
+        const response = await fetch('/api/fees');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch fees: ${response.status} ${response.statusText}`);
         }
+        fees = await response.json();
+        console.log('Fetched fees:', fees);
+        displayFees();
     }
 
     async function fetchBooks() {
-        try {
-            const response = await fetch('/api/books');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch books: ${response.status} ${response.statusText}`);
-            }
-            books = await response.json();
-            console.log('Fetched books:', books);
-            displayBooks();
-        } catch (error) {
-            console.error('Error fetching books:', error);
-            alert('Failed to fetch books. Please try again later.');
+        console.log('Fetching books...');
+        const response = await fetch('/api/books');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch books: ${response.status} ${response.statusText}`);
         }
+        books = await response.json();
+        console.log('Fetched books:', books);
+        displayBooks();
     }
 
     async function fetchClassBooks() {
-        try {
-            const response = await fetch('/api/classBooks');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch class books: ${response.status} ${response.statusText}`);
-            }
-            classBooks = await response.json();
-            console.log('Fetched class books:', classBooks);
-            displayClassBooks();
-        } catch (error) {
-            console.error('Error fetching class books:', error);
-            alert('Failed to fetch class books. Please try again later.');
+        console.log('Fetching class books...');
+        const response = await fetch('/api/classBooks');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch class books: ${response.status} ${response.statusText}`);
         }
+        classBooks = await response.json();
+        console.log('Fetched class books:', classBooks);
+        displayClassBooks();
     }
 
     async function fetchFeeStructure() {
-        try {
-            const response = await fetch('/api/feeStructure');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch fee structure: ${response.status} ${response.statusText}`);
-            }
-            feeStructure = await response.json() || {};
-            console.log('Fetched fee structure:', feeStructure);
-            loadFeeStructure();
-        } catch (error) {
-            console.error('Error fetching fee structure:', error);
-            alert('Failed to fetch fee structure. Please try again later.');
+        console.log('Fetching fee structure...');
+        const response = await fetch('/api/feeStructure');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch fee structure: ${response.status} ${response.statusText}`);
         }
+        feeStructure = await response.json() || {};
+        console.log('Fetched fee structure:', feeStructure);
+        loadFeeStructure();
     }
 
     async function fetchTermSettings() {
-        try {
-            const response = await fetch('/api/termSettings');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch term settings: ${response.status} ${response.statusText}`);
-            }
-            const settings = await response.json();
-            if (settings) {
-                currentTerm = settings.currentTerm;
-                currentYear = settings.currentYear;
-            }
-            document.getElementById('currentTermYear').textContent = `${currentTerm} ${currentYear}`;
-            document.getElementById('currentTerm').value = currentTerm;
-            document.getElementById('currentYear').value = currentYear;
-            console.log('Fetched term settings:', { currentTerm, currentYear });
-        } catch (error) {
-            console.error('Error fetching term settings:', error);
-            alert('Failed to fetch term settings. Please try again later.');
+        console.log('Fetching term settings...');
+        const response = await fetch('/api/termSettings');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch term settings: ${response.status} ${response.statusText}`);
         }
+        const settings = await response.json();
+        if (settings) {
+            currentTerm = settings.currentTerm || 'Term 1';
+            currentYear = settings.currentYear || new Date().getFullYear();
+        }
+        document.getElementById('currentTermYear').textContent = `${currentTerm} ${currentYear}`;
+        document.getElementById('currentTerm').value = currentTerm;
+        document.getElementById('currentYear').value = currentYear;
+        console.log('Fetched term settings:', { currentTerm, currentYear });
     }
 
     async function fetchArchivedYears() {
-        try {
-            const response = await fetch('/api/learnerArchives/years');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch archived years: ${response.status} ${response.statusText}`);
-            }
-            const years = await response.json();
-            const select = document.getElementById('learnerYearSelect');
-            select.innerHTML = `<option value="${currentYear}">${currentYear} (Current)</option>` +
-                years.map(year => `<option value="${year}">${year}</option>`).join('');
-            console.log('Fetched archived years:', years);
-        } catch (error) {
-            console.error('Error fetching archived years:', error);
-            alert('Failed to fetch archived years. Please try again later.');
+        console.log('Fetching archived years...');
+        const response = await fetch('/api/learnerArchives/years');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch archived years: ${response.status} ${response.statusText}`);
         }
+        const years = await response.json();
+        const select = document.getElementById('learnerYearSelect');
+        select.innerHTML = `<option value="${currentYear}">${currentYear} (Current)</option>` +
+            years.map(year => `<option value="${year}">${year}</option>`).join('');
+        console.log('Fetched archived years:', years);
     }
 
     function getNextAdmissionNo() {
@@ -209,20 +215,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 parentEmail: document.getElementById('parentEmail').value
             };
             try {
+                console.log('Adding learner:', learner);
                 const response = await fetch('/api/learners', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(learner)
                 });
                 if (!response.ok) {
-                    throw new Error(`Failed to add learner: ${response.status} ${response.statusText}`);
+                    const errorText = await response.text();
+                    throw new Error(`Failed to add learner: ${response.status} ${response.statusText} - ${errorText}`);
                 }
+                const savedLearner = await response.json();
+                console.log('Learner added successfully:', savedLearner);
                 await fetchLearners();
                 document.getElementById('learnerForm').reset();
                 document.getElementById('addLearnerForm').style.display = 'none';
+                alert('Learner added successfully');
             } catch (error) {
-                console.error('Error adding learner:', error);
-                alert('Failed to add learner. Please try again.');
+                console.error('Error adding learner:', error.message);
+                alert(`Failed to add learner: ${error.message}. Please try again.`);
             }
         });
 
@@ -241,6 +252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 parentEmail: document.getElementById('editParentEmail').value
             };
             try {
+                console.log('Updating learner:', learner);
                 const response = await fetch(`/api/learners/${learners[index]._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -251,6 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 await fetchLearners();
                 document.getElementById('editLearnerForm').style.display = 'none';
+                alert('Learner updated successfully');
             } catch (error) {
                 console.error('Error updating learner:', error);
                 alert('Failed to update learner. Please try again.');
@@ -288,6 +301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             try {
+                console.log('Adding fee:', fee);
                 const response = await fetch('/api/fees', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -338,6 +352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             try {
+                console.log('Updating fee:', fee);
                 const response = await fetch(`/api/fees/${fees[index]._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -364,6 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bookTitle: document.getElementById('bookTitle').value
             };
             try {
+                console.log('Adding book:', book);
                 const response = await fetch('/api/books', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -375,6 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await fetchBooks();
                 document.getElementById('bookForm').reset();
                 document.getElementById('addBookForm').style.display = 'none';
+                alert('Book added successfully');
             } catch (error) {
                 console.error('Error adding book:', error);
                 alert('Failed to add book. Please try again.');
@@ -391,6 +408,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bookTitle: document.getElementById('editBookTitle').value
             };
             try {
+                console.log('Updating book:', book);
                 const response = await fetch(`/api/books/${books[index]._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -401,6 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 await fetchBooks();
                 document.getElementById('editBookForm').style.display = 'none';
+                alert('Book updated successfully');
             } catch (error) {
                 console.error('Error updating book:', error);
                 alert('Failed to update book. Please try again.');
@@ -417,6 +436,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 totalBooks: parseInt(document.getElementById('totalBooks').value)
             };
             try {
+                console.log('Adding class book:', classBook);
                 const response = await fetch('/api/classBooks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -428,6 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await fetchClassBooks();
                 document.getElementById('classBookForm').reset();
                 document.getElementById('addClassBookForm').style.display = 'none';
+                alert('Class book added successfully');
             } catch (error) {
                 console.error('Error adding class book:', error);
                 alert('Failed to add class book. Please try again.');
@@ -445,6 +466,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 totalBooks: parseInt(document.getElementById('editTotalBooks').value)
             };
             try {
+                console.log('Updating class book:', classBook);
                 const response = await fetch(`/api/classBooks/${classBooks[index]._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -455,6 +477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 await fetchClassBooks();
                 document.getElementById('editClassBookForm').style.display = 'none';
+                alert('Class book updated successfully');
             } catch (error) {
                 console.error('Error updating class book:', error);
                 alert('Failed to update class book. Please try again.');
@@ -479,6 +502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 grade9: parseFloat(document.getElementById('grade9Fee').value) || 0
             };
             try {
+                console.log('Saving fee structure:', newFeeStructure);
                 const response = await fetch('/api/feeStructure', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -507,6 +531,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentYear: parseInt(document.getElementById('currentYear').value)
             };
             try {
+                console.log('Saving term settings:', settings);
                 const response = await fetch('/api/termSettings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -527,6 +552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('newAcademicYearBtn')?.addEventListener('click', async () => {
             if (confirm('Are you sure you want to start a new academic year? This will archive the current year\'s data and update learners\' grades.')) {
                 try {
+                    console.log('Starting new academic year...');
                     const response = await fetch('/api/newAcademicYear', { method: 'POST' });
                     if (!response.ok) {
                         throw new Error(`Failed to start new academic year: ${response.status} ${response.statusText}`);
@@ -581,14 +607,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const sectionId = a.getAttribute('href').substring(1);
                 console.log('Navigating to section:', sectionId);
 
-                // Remove active class from all sidebar links and hide all sections
                 document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
                 document.querySelectorAll('section').forEach(s => s.style.display = 'none');
 
-                // Add active class to the clicked link
                 a.classList.add('active');
 
-                // Show the target section
                 const targetSection = document.getElementById(sectionId);
                 if (targetSection) {
                     console.log('Section found, displaying:', sectionId);
@@ -597,7 +620,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.error('Section not found:', sectionId);
                 }
 
-                // Load data for the specific section
                 if (sectionId === 'fees') {
                     console.log('Calling displayFees()');
                     displayFees();
@@ -695,6 +717,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const feePerTerm = feeStructure[learners.find(l => l.admissionNo === admissionNo).grade.replace(' ', '').toLowerCase()] || 0;
             updatedFee.balance = feePerTerm - updatedFee.amountPaid;
             try {
+                console.log('Updating next term fee:', updatedFee);
                 const response = await fetch(`/api/fees/${existingFee._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -714,6 +737,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 balance: feeStructure[learners.find(l => l.admissionNo === admissionNo).grade.replace(' ', '').toLowerCase()] - amount
             };
             try {
+                console.log('Adding next term fee:', fee);
                 const response = await fetch('/api/fees', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -817,126 +841,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         console.log('Populating class books table with data:', classBooks);
         tbody.innerHTML = '';
-        classBooks.forEach((book, index) => {
+        classBooks.forEach((classBook, index) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${book.bookNumber}</td>
-                <td>${book.subject}</td>
-                <td>${book.description}</td>
-                <td>${book.totalBooks}</td>
+                <td>${classBook.bookNumber}</td>
+                <td>${classBook.subject}</td>
+                <td>${classBook.description}</td>
+                <td>${classBook.totalBooks}</td>
                 <td>
-                    <button onclick="editClassBook('${book._id}', ${index})">Edit</button>
-                    <button onclick="deleteClassBook('${book._id}')">Delete</button>
+                    <button onclick="editClassBook('${classBook._id}', ${index})">Edit</button>
+                    <button onclick="deleteClassBook('${classBook._id}')">Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    window.editLearner = (id, index) => {
-        const learner = learners.find(l => l._id === id);
-        document.getElementById('editLearnerIndex').value = index;
-        document.getElementById('editFullName').value = learner.fullName;
-        document.getElementById('editGender').value = learner.gender;
-        document.getElementById('editDob').value = learner.dob;
-        document.getElementById('editGrade').value = learner.grade;
-        document.getElementById('editAssessmentNumber').value = learner.assessmentNumber || '';
-        document.getElementById('editParentName').value = learner.parentName;
-        document.getElementById('editParentPhone').value = learner.parentPhone;
-        document.getElementById('editParentEmail').value = learner.parentEmail;
-        document.getElementById('editAssessmentNumber').style.display = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9'].includes(learner.grade) ? 'block' : 'none';
-        document.getElementById('editLearnerForm').style.display = 'block';
-    };
-
-    window.editFee = (id, index) => {
-        const fee = fees.find(f => f._id === id);
-        document.getElementById('editFeeIndex').value = index;
-        document.getElementById('editFeeAdmissionNo').innerHTML = learners.map(l => `<option value="${l.admissionNo}" ${l.admissionNo === fee.admissionNo ? 'selected' : ''}>${l.admissionNo} - ${l.fullName}</option>`).join('');
-        document.getElementById('editTerm').value = fee.term;
-        document.getElementById('editAmountPaid').value = fee.amountPaid;
-        document.getElementById('editFeeForm').style.display = 'block';
-    };
-
-    window.editBook = (id, index) => {
-        const book = books.find(b => b._id === id);
-        document.getElementById('editBookIndex').value = index;
-        document.getElementById('editBookAdmissionNo').innerHTML = learners.map(l => `<option value="${l.admissionNo}" ${l.admissionNo === book.admissionNo ? 'selected' : ''}>${l.admissionNo} - ${l.fullName}</option>`).join('');
-        document.getElementById('editSubject').value = book.subject;
-        document.getElementById('editBookTitle').value = book.bookTitle;
-        document.getElementById('editBookForm').style.display = 'block';
-    };
-
-    window.editClassBook = (id, index) => {
-        const book = classBooks.find(b => b._id === id);
-        document.getElementById('editClassBookIndex').value = index;
-        document.getElementById('editBookNumber').value = book.bookNumber;
-        document.getElementById('editClassSubject').value = book.subject;
-        document.getElementById('editBookDescription').value = book.description;
-        document.getElementById('editTotalBooks').value = book.totalBooks;
-        document.getElementById('editClassBookForm').style.display = 'block';
-    };
-
-    window.deleteLearner = async (id) => {
-        if (confirm('Are you sure you want to delete this learner?')) {
-            try {
-                const response = await fetch(`/api/learners/${id}`, { method: 'DELETE' });
-                if (!response.ok) {
-                    throw new Error(`Failed to delete learner: ${response.status} ${response.statusText}`);
-                }
-                await fetchLearners();
-            } catch (error) {
-                console.error('Error deleting learner:', error);
-                alert('Failed to delete learner. Please try again.');
-            }
-        }
-    };
-
-    window.deleteFee = async (id) => {
-        if (confirm('Are you sure you want to delete this fee record?')) {
-            try {
-                const response = await fetch(`/api/fees/${id}`, { method: 'DELETE' });
-                if (!response.ok) {
-                    throw new Error(`Failed to delete fee: ${response.status} ${response.statusText}`);
-                }
-                await fetchFees();
-            } catch (error) {
-                console.error('Error deleting fee:', error);
-                alert('Failed to delete fee. Please try again.');
-            }
-        }
-    };
-
-    window.deleteBook = async (id) => {
-        if (confirm('Are you sure you want to delete this book record?')) {
-            try {
-                const response = await fetch(`/api/books/${id}`, { method: 'DELETE' });
-                if (!response.ok) {
-                    throw new Error(`Failed to delete book: ${response.status} ${response.statusText}`);
-                }
-                await fetchBooks();
-            } catch (error) {
-                console.error('Error deleting book:', error);
-                alert('Failed to delete book. Please try again.');
-            }
-        }
-    };
-
-    window.deleteClassBook = async (id) => {
-        if (confirm('Are you sure you want to delete this class book record?')) {
-            try {
-                const response = await fetch(`/api/classBooks/${id}`, { method: 'DELETE' });
-                if (!response.ok) {
-                    throw new Error(`Failed to delete class book: ${response.status} ${response.statusText}`);
-                }
-                await fetchClassBooks();
-            } catch (error) {
-                console.error('Error deleting class book:', error);
-                alert('Failed to delete class book. Please try again.');
-            }
-        }
-    };
-
     function loadFeeStructure() {
+        console.log('Loading fee structure into form:', feeStructure);
         document.getElementById('playgroupFee').value = feeStructure.playgroup || '';
         document.getElementById('pp1Fee').value = feeStructure.pp1 || '';
         document.getElementById('pp2Fee').value = feeStructure.pp2 || '';
@@ -951,33 +873,161 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('grade9Fee').value = feeStructure.grade9 || '';
     }
 
-    // Download Functions
+    window.editLearner = (id, index) => {
+        const learner = learners[index];
+        document.getElementById('editLearnerIndex').value = index;
+        document.getElementById('editFullName').value = learner.fullName;
+        document.getElementById('editGender').value = learner.gender;
+        document.getElementById('editDob').value = learner.dob;
+        document.getElementById('editGrade').value = learner.grade;
+        document.getElementById('editAssessmentNumber').value = learner.assessmentNumber || '';
+        document.getElementById('editParentName').value = learner.parentName;
+        document.getElementById('editParentPhone').value = learner.parentPhone;
+        document.getElementById('editParentEmail').value = learner.parentEmail;
+        document.getElementById('editLearnerForm').style.display = 'block';
+    };
+
+    window.deleteLearner = async (id) => {
+        if (confirm('Are you sure you want to delete this learner?')) {
+            try {
+                console.log('Deleting learner with ID:', id);
+                const response = await fetch(`/api/learners/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Failed to delete learner: ${response.status} ${response.statusText}`);
+                }
+                await fetchLearners();
+                alert('Learner deleted successfully');
+            } catch (error) {
+                console.error('Error deleting learner:', error);
+                alert('Failed to delete learner. Please try again.');
+            }
+        }
+    };
+
+    window.editFee = (id, index) => {
+        const fee = fees[index];
+        document.getElementById('editFeeIndex').value = index;
+        document.getElementById('editFeeAdmissionNo').innerHTML = learners.map(l => `<option value="${l.admissionNo}" ${l.admissionNo === fee.admissionNo ? 'selected' : ''}>${l.admissionNo} - ${l.fullName}</option>`).join('');
+        document.getElementById('editTerm').value = fee.term;
+        document.getElementById('editAmountPaid').value = fee.amountPaid;
+        document.getElementById('editFeeForm').style.display = 'block';
+    };
+
+    window.deleteFee = async (id) => {
+        if (confirm('Are you sure you want to delete this fee record?')) {
+            try {
+                console.log('Deleting fee with ID:', id);
+                const response = await fetch(`/api/fees/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Failed to delete fee: ${response.status} ${response.statusText}`);
+                }
+                await fetchFees();
+                alert('Fee deleted successfully');
+            } catch (error) {
+                console.error('Error deleting fee:', error);
+                alert('Failed to delete fee. Please try again.');
+            }
+        }
+    };
+
+    window.editBook = (id, index) => {
+        const book = books[index];
+        document.getElementById('editBookIndex').value = index;
+        document.getElementById('editBookAdmissionNo').innerHTML = learners.map(l => `<option value="${l.admissionNo}" ${l.admissionNo === book.admissionNo ? 'selected' : ''}>${l.admissionNo} - ${l.fullName}</option>`).join('');
+        document.getElementById('editSubject').value = book.subject;
+        document.getElementById('editBookTitle').value = book.bookTitle;
+        document.getElementById('editBookForm').style.display = 'block';
+    };
+
+    window.deleteBook = async (id) => {
+        if (confirm('Are you sure you want to delete this book record?')) {
+            try {
+                console.log('Deleting book with ID:', id);
+                const response = await fetch(`/api/books/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Failed to delete book: ${response.status} ${response.statusText}`);
+                }
+                await fetchBooks();
+                alert('Book deleted successfully');
+            } catch (error) {
+                console.error('Error deleting book:', error);
+                alert('Failed to delete book. Please try again.');
+            }
+        }
+    };
+
+    window.editClassBook = (id, index) => {
+        const classBook = classBooks[index];
+        document.getElementById('editClassBookIndex').value = index;
+        document.getElementById('editBookNumber').value = classBook.bookNumber;
+        document.getElementById('editClassSubject').value = classBook.subject;
+        document.getElementById('editBookDescription').value = classBook.description;
+        document.getElementById('editTotalBooks').value = classBook.totalBooks;
+        document.getElementById('editClassBookForm').style.display = 'block';
+    };
+
+    window.deleteClassBook = async (id) => {
+        if (confirm('Are you sure you want to delete this class book record?')) {
+            try {
+                console.log('Deleting class book with ID:', id);
+                const response = await fetch(`/api/classBooks/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Failed to delete class book: ${response.status} ${response.statusText}`);
+                }
+                await fetchClassBooks();
+                alert('Class book deleted successfully');
+            } catch (error) {
+                console.error('Error deleting class book:', error);
+                alert('Failed to delete class book. Please try again.');
+            }
+        }
+    };
+
     function downloadExcel(data, headers, filename) {
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-        XLSX.writeFile(wb, `${filename}.xlsx`);
+        const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+        XLSX.writeFile(workbook, `${filename}.xlsx`);
     }
 
     function downloadWord(data, headers, filename) {
-        const htmlContent = `
-            <table border="1" style="border-collapse: collapse; width: 100%;">
-                <thead>
-                    <tr>${headers.map(h => `<th style="background-color: #3498db; color: white; padding: 8px;">${h}</th>`).join('')}</tr>
-                </thead>
-                <tbody>
-                    ${data.map(row => `<tr>${row.map(cell => `<td style="padding: 8px;">${cell}</td>`).join('')}</tr>`).join('')}
-                </tbody>
-            </table>
-        `;
-        
-        const doc = htmlDocx.asBlob(htmlContent);
-        const url = URL.createObjectURL(doc);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${filename}.docx`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const doc = new Document({
+            sections: [{
+                properties: {},
+                children: [
+                    new Paragraph({
+                        children: [new TextRun(`Report: ${filename}`), new TextRun({ text: '', break: 2 })]
+                    }),
+                    new Table({
+                        rows: [
+                            new TableRow({
+                                children: headers.map(header => new TableCell({
+                                    children: [new Paragraph({ children: [new TextRun({ text: header, bold: true })], alignment: 'center' })],
+                                    verticalAlign: 'center'
+                                }))
+                            }),
+                            ...data.map(row => new TableRow({
+                                children: row.map(cell => new TableCell({
+                                    children: [new Paragraph({ children: [new TextRun(cell.toString())], alignment: 'center' })],
+                                    verticalAlign: 'center'
+                                }))
+                            }))
+                        ]
+                    })
+                ]
+            }]
+        });
+
+        Packer.toBlob(doc).then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        });
     }
 
     function downloadPdf(data, headers, filename) {
@@ -986,8 +1036,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         doc.autoTable({
             head: [headers],
             body: data,
-            styles: { fontSize: 10 },
-            headStyles: { fillColor: [52, 152, 219] },
+            styles: { halign: 'center' },
+            headStyles: { fillColor: [0, 128, 128] }
         });
         doc.save(`${filename}.pdf`);
     }
