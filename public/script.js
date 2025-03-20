@@ -11,13 +11,25 @@ async function fetchData(endpoint, retries = 1) {
             clearTimeout(timeoutId);
 
             if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
             }
             return await response.json();
         } catch (error) {
             console.error(`Attempt ${attempt} failed for ${endpoint}:`, error.message);
             if (attempt === retries + 1) {
-                throw error; // Final attempt failed
+                console.error(`All attempts failed for ${endpoint}. Returning default value.`);
+                // Return default values based on the endpoint
+                if (endpoint.includes('/api/learners') || endpoint.includes('/api/fees') || 
+                    endpoint.includes('/api/books') || endpoint.includes('/api/classBooks') || 
+                    endpoint.includes('/api/learnerArchives')) {
+                    return []; // Default for arrays
+                } else if (endpoint.includes('/api/feeStructure')) {
+                    return {}; // Default for fee structure
+                } else if (endpoint.includes('/api/termSettings')) {
+                    return { currentTerm: 'Term 1', currentYear: new Date().getFullYear() }; // Default for term settings
+                }
+                throw error; // If no default value is defined, rethrow the error
             }
             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
         }
@@ -28,13 +40,13 @@ async function fetchData(endpoint, retries = 1) {
 async function loadDashboardData() {
     try {
         const [learners, fees, books, classBooks, feeStructure, termSettings, archivedYears] = await Promise.all([
-            fetchData('/api/learners').catch(() => []),
-            fetchData('/api/fees').catch(() => []),
-            fetchData('/api/books').catch(() => []),
-            fetchData('/api/classBooks').catch(() => []),
-            fetchData('/api/feeStructure').catch(() => ({})),
-            fetchData('/api/termSettings').catch(() => ({ currentTerm: 'Term 1', currentYear: new Date().getFullYear() })),
-            fetchData('/api/learnerArchives/years').catch(() => [])
+            fetchData('/api/learners'),
+            fetchData('/api/fees'),
+            fetchData('/api/books'),
+            fetchData('/api/classBooks'),
+            fetchData('/api/feeStructure'),
+            fetchData('/api/termSettings'),
+            fetchData('/api/learnerArchives/years')
         ]);
 
         console.log('Fetched dashboard data:', { learners, fees, books, classBooks, feeStructure, termSettings, archivedYears });
@@ -43,7 +55,9 @@ async function loadDashboardData() {
         updateDashboard(learners, fees, books, classBooks, feeStructure, termSettings, archivedYears);
     } catch (error) {
         console.error('Failed to load dashboard data:', error.message);
-        alert('Failed to fetch the following data: learners, fees, books, class books, fee structure, term settings, archived years. Please try again later.');
+        // Instead of showing an error, update the dashboard with default values
+        updateDashboard([], [], [], [], {}, { currentTerm: 'Term 1', currentYear: new Date().getFullYear() }, []);
+        alert('Unable to connect to the database. Displaying default values. Please try again later.');
     }
 }
 
@@ -147,7 +161,8 @@ async function addLearner(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Learner added successfully');
@@ -198,7 +213,8 @@ async function editLearner(id) {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
                 }
 
                 alert('Learner updated successfully');
@@ -226,7 +242,8 @@ async function deleteLearner(id) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Learner deleted successfully');
@@ -284,7 +301,8 @@ async function addFee(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Fee added successfully');
@@ -325,7 +343,8 @@ async function editFee(id) {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
                 }
 
                 alert('Fee updated successfully');
@@ -353,7 +372,8 @@ async function deleteFee(id) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Fee deleted successfully');
@@ -409,7 +429,8 @@ async function addBook(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Book added successfully');
@@ -448,7 +469,8 @@ async function editBook(id) {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
                 }
 
                 alert('Book updated successfully');
@@ -476,7 +498,8 @@ async function deleteBook(id) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Book deleted successfully');
@@ -534,7 +557,8 @@ async function addClassBook(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Class book added successfully');
@@ -554,7 +578,7 @@ async function editClassBook(id) {
         document.getElementById('bookNumber').value = classBook.bookNumber;
         document.getElementById('subject').value = classBook.subject;
         document.getElementById('description').value = classBook.description;
-        document.getElementByd('totalBooks').value = classBook.totalBooks;
+        document.getElementById('totalBooks').value = classBook.totalBooks;
 
         const form = document.getElementById('classBookForm');
         form.onsubmit = async (event) => {
@@ -575,7 +599,8 @@ async function editClassBook(id) {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
                 }
 
                 alert('Class book updated successfully');
@@ -603,7 +628,8 @@ async function deleteClassBook(id) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Class book deleted successfully');
@@ -664,7 +690,8 @@ async function saveFeeStructure(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Fee structure saved successfully');
@@ -704,7 +731,8 @@ async function saveTermSettings(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('Term settings saved successfully');
@@ -725,7 +753,8 @@ async function startNewAcademicYear() {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
         }
 
         alert('New academic year started successfully');
