@@ -4,14 +4,40 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 
+// Suppress the punycode deprecation warning (not critical for this application)
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/school_management', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
+mongoose.set('strictQuery', false); // Suppress Mongoose strictQuery deprecation warning
+
+const connectToMongoDB = async () => {
+    try {
+        const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/school_management';
+        console.log('Attempting to connect to MongoDB with URI:', mongoURI.replace(/\/\/.*@/, '//<hidden>@')); // Debug log with hidden credentials
+        await mongoose.connect(mongoURI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
+            socketTimeoutMS: 45000, // Increase socket timeout to 45 seconds
+        });
+        console.log('Connected to MongoDB successfully');
+    } catch (error) {
+        console.error('Failed to connect to MongoDB:', error.message);
+        // Instead of exiting, keep the app running to avoid 502 errors, but log the issue
+        // process.exit(1); // Commented out to prevent immediate crash
+        throw new Error('MongoDB connection failed'); // Let the app handle the error gracefully
+    }
+};
+
+// Call the connection function and handle errors
+connectToMongoDB().catch((error) => {
+    console.error('MongoDB connection error during startup:', error.message);
+    // Keep the server running to avoid 502 errors, but indicate the issue
+    app.get('/health', (req, res) => {
+        res.status(503).json({ status: 'error', message: 'Service unavailable: MongoDB connection failed' });
+    });
 });
 
 // Models
@@ -86,7 +112,7 @@ app.get('/api/learners', async (req, res) => {
         const learners = await Learner.find();
         res.json(learners);
     } catch (error) {
-        console.error('Error fetching learners:', error);
+        console.error('Error fetching learners:', error.message);
         res.status(500).json({ error: 'Failed to fetch learners' });
     }
 });
@@ -97,7 +123,7 @@ app.post('/api/learners', async (req, res) => {
         await learner.save();
         res.json(learner);
     } catch (error) {
-        console.error('Error adding learner:', error);
+        console.error('Error adding learner:', error.message);
         res.status(500).json({ error: 'Failed to add learner' });
     }
 });
@@ -110,7 +136,7 @@ app.put('/api/learners/:id', async (req, res) => {
         }
         res.json(learner);
     } catch (error) {
-        console.error('Error updating learner:', error);
+        console.error('Error updating learner:', error.message);
         res.status(500).json({ error: 'Failed to update learner' });
     }
 });
@@ -123,7 +149,7 @@ app.delete('/api/learners/:id', async (req, res) => {
         }
         res.sendStatus(204);
     } catch (error) {
-        console.error('Error deleting learner:', error);
+        console.error('Error deleting learner:', error.message);
         res.status(500).json({ error: 'Failed to delete learner' });
     }
 });
@@ -133,7 +159,7 @@ app.get('/api/fees', async (req, res) => {
         const fees = await Fee.find();
         res.json(fees);
     } catch (error) {
-        console.error('Error fetching fees:', error);
+        console.error('Error fetching fees:', error.message);
         res.status(500).json({ error: 'Failed to fetch fees' });
     }
 });
@@ -144,7 +170,7 @@ app.post('/api/fees', async (req, res) => {
         await fee.save();
         res.json(fee);
     } catch (error) {
-        console.error('Error adding fee:', error);
+        console.error('Error adding fee:', error.message);
         res.status(500).json({ error: 'Failed to add fee' });
     }
 });
@@ -157,7 +183,7 @@ app.put('/api/fees/:id', async (req, res) => {
         }
         res.json(fee);
     } catch (error) {
-        console.error('Error updating fee:', error);
+        console.error('Error updating fee:', error.message);
         res.status(500).json({ error: 'Failed to update fee' });
     }
 });
@@ -170,7 +196,7 @@ app.delete('/api/fees/:id', async (req, res) => {
         }
         res.sendStatus(204);
     } catch (error) {
-        console.error('Error deleting fee:', error);
+        console.error('Error deleting fee:', error.message);
         res.status(500).json({ error: 'Failed to delete fee' });
     }
 });
@@ -180,7 +206,7 @@ app.get('/api/books', async (req, res) => {
         const books = await Book.find();
         res.json(books);
     } catch (error) {
-        console.error('Error fetching books:', error);
+        console.error('Error fetching books:', error.message);
         res.status(500).json({ error: 'Failed to fetch books' });
     }
 });
@@ -191,7 +217,7 @@ app.post('/api/books', async (req, res) => {
         await book.save();
         res.json(book);
     } catch (error) {
-        console.error('Error adding book:', error);
+        console.error('Error adding book:', error.message);
         res.status(500).json({ error: 'Failed to add book' });
     }
 });
@@ -204,7 +230,7 @@ app.put('/api/books/:id', async (req, res) => {
         }
         res.json(book);
     } catch (error) {
-        console.error('Error updating book:', error);
+        console.error('Error updating book:', error.message);
         res.status(500).json({ error: 'Failed to update book' });
     }
 });
@@ -217,7 +243,7 @@ app.delete('/api/books/:id', async (req, res) => {
         }
         res.sendStatus(204);
     } catch (error) {
-        console.error('Error deleting book:', error);
+        console.error('Error deleting book:', error.message);
         res.status(500).json({ error: 'Failed to delete book' });
     }
 });
@@ -227,7 +253,7 @@ app.get('/api/classBooks', async (req, res) => {
         const classBooks = await ClassBook.find();
         res.json(classBooks);
     } catch (error) {
-        console.error('Error fetching class books:', error);
+        console.error('Error fetching class books:', error.message);
         res.status(500).json({ error: 'Failed to fetch class books' });
     }
 });
@@ -238,7 +264,7 @@ app.post('/api/classBooks', async (req, res) => {
         await classBook.save();
         res.json(classBook);
     } catch (error) {
-        console.error('Error adding class book:', error);
+        console.error('Error adding class book:', error.message);
         res.status(500).json({ error: 'Failed to add class book' });
     }
 });
@@ -251,7 +277,7 @@ app.put('/api/classBooks/:id', async (req, res) => {
         }
         res.json(classBook);
     } catch (error) {
-        console.error('Error updating class book:', error);
+        console.error('Error updating class book:', error.message);
         res.status(500).json({ error: 'Failed to update class book' });
     }
 });
@@ -264,7 +290,7 @@ app.delete('/api/classBooks/:id', async (req, res) => {
         }
         res.sendStatus(204);
     } catch (error) {
-        console.error('Error deleting class book:', error);
+        console.error('Error deleting class book:', error.message);
         res.status(500).json({ error: 'Failed to delete class book' });
     }
 });
@@ -274,7 +300,7 @@ app.get('/api/feeStructure', async (req, res) => {
         const feeStructure = await FeeStructure.findOne();
         res.json(feeStructure || {});
     } catch (error) {
-        console.error('Error fetching fee structure:', error);
+        console.error('Error fetching fee structure:', error.message);
         res.status(500).json({ error: 'Failed to fetch fee structure' });
     }
 });
@@ -292,7 +318,7 @@ app.post('/api/feeStructure', async (req, res) => {
         }
         res.json(feeStructure);
     } catch (error) {
-        console.error('Error saving fee structure:', error);
+        console.error('Error saving fee structure:', error.message);
         res.status(500).json({ error: 'Failed to save fee structure' });
     }
 });
@@ -302,7 +328,7 @@ app.get('/api/termSettings', async (req, res) => {
         const termSettings = await TermSettings.findOne();
         res.json(termSettings || { currentTerm: 'Term 1', currentYear: new Date().getFullYear() });
     } catch (error) {
-        console.error('Error fetching term settings:', error);
+        console.error('Error fetching term settings:', error.message);
         res.status(500).json({ error: 'Failed to fetch term settings' });
     }
 });
@@ -318,7 +344,7 @@ app.post('/api/termSettings', async (req, res) => {
         }
         res.json(termSettings);
     } catch (error) {
-        console.error('Error saving term settings:', error);
+        console.error('Error saving term settings:', error.message);
         res.status(500).json({ error: 'Failed to save term settings' });
     }
 });
@@ -359,7 +385,7 @@ app.post('/api/newAcademicYear', async (req, res) => {
 
         res.sendStatus(200);
     } catch (error) {
-        console.error('Error starting new academic year:', error);
+        console.error('Error starting new academic year:', error.message);
         res.status(500).json({ error: 'Failed to start new academic year' });
     }
 });
@@ -370,7 +396,7 @@ app.get('/api/learnerArchives/years', async (req, res) => {
         const years = archives.map(archive => archive.year);
         res.json(years);
     } catch (error) {
-        console.error('Error fetching archived years:', error);
+        console.error('Error fetching archived years:', error.message);
         res.status(500).json({ error: 'Failed to fetch archived years' });
     }
 });
@@ -383,7 +409,7 @@ app.get('/api/learnerArchives/:year', async (req, res) => {
         }
         res.json(archive.learners);
     } catch (error) {
-        console.error('Error fetching archived learners:', error);
+        console.error('Error fetching archived learners:', error.message);
         res.status(500).json({ error: 'Failed to fetch archived learners' });
     }
 });
@@ -391,8 +417,13 @@ app.get('/api/learnerArchives/:year', async (req, res) => {
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', message: 'Server is running' });
+});
+
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
