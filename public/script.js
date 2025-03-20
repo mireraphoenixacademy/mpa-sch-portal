@@ -211,16 +211,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 balance
             };
 
-            await fetch('/api/fees', {
+            const response = await fetch('/api/fees', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(fee)
             });
 
-            await fetchFees();
-            await sendFeeNotification(learner, fee);
-            document.getElementById('feeForm').reset();
-            document.getElementById('addFeeForm').style.display = 'none';
+            if (response.ok) {
+                alert(`Fee added successfully for ${learner.fullName}! Balance: ${balance}`); // Notify user
+                await fetchFees();
+                document.getElementById('feeForm').reset();
+                document.getElementById('addFeeForm').style.display = 'none';
+            } else {
+                alert('Failed to add fee. Please try again.');
+            }
         });
 
         // Edit Fee Form
@@ -254,15 +258,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 balance
             };
 
-            await fetch(`/api/fees/${fees[index]._id}`, {
+            const response = await fetch(`/api/fees/${fees[index]._id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(fee)
             });
 
-            await fetchFees();
-            await sendFeeNotification(learner, fee);
-            document.getElementById('editFeeForm').style.display = 'none';
+            if (response.ok) {
+                alert(`Fee updated successfully for ${learner.fullName}! Balance: ${balance}`); // Notify user
+                await fetchFees();
+                document.getElementById('editFeeForm').style.display = 'none';
+            } else {
+                alert('Failed to update fee. Please try again.');
+            }
         });
 
         // Book Form
@@ -536,52 +544,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(fee)
             });
-        }
-    }
-
-    async function sendFeeNotification(learner, fee) {
-        // Check if the parent has opted out of SMS notifications
-        const optedOutResponse = await fetch('/api/checkOptOut', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: learner.parentPhone })
-        });
-        const optedOut = await optedOutResponse.json();
-
-        if (optedOut) {
-            console.log(`Skipping SMS notification to ${learner.parentPhone} - user has opted out.`);
-            alert(`SMS notification to ${learner.parentName} (${learner.parentPhone}) was skipped because they have opted out.`);
-            return;
-        }
-
-        // Format the message to match the Twilio example: "fee bal : 2000"
-        const message = `fee bal : ${fee.balance}`;
-        console.log('Preparing to send SMS notification:', {
-            phone: learner.parentPhone,
-            message
-        });
-
-        try {
-            const response = await fetch('/api/sendNotification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: learner.parentPhone,
-                    message
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `Failed to send SMS: ${response.status} ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            console.log('SMS notification sent successfully:', result);
-            alert(`SMS notification sent successfully to ${learner.parentName} (${learner.parentPhone}). Message SID: ${result.sid}`);
-        } catch (err) {
-            console.error('Error sending SMS notification:', err.message);
-            alert(`Failed to send SMS notification to ${learner.parentName} (${learner.parentPhone}): ${err.message}`);
         }
     }
 
