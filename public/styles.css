@@ -10,10 +10,13 @@
 body {
     background-color: #f4f7fa;
     color: #333;
+    display: flex;
+    min-height: 100vh;
 }
 
 /* Hamburger Menu */
 .hamburger {
+    display: none;
     position: fixed;
     top: 15px;
     left: 15px;
@@ -29,19 +32,19 @@ body {
     background-color: #2c3e50;
     position: fixed;
     top: 0;
-    left: -250px;
+    left: 0;
     height: 100%;
     padding: 20px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    transition: left 0.3s ease;
+    transition: transform 0.3s ease;
     z-index: 1000;
 }
 
 .sidebar.active {
-    left: 0;
+    transform: translateX(0);
 }
 
-.sidebar h2 {
+.sidebar h1 {
     color: #ecf0f1;
     text-align: center;
     margin-bottom: 30px;
@@ -58,7 +61,7 @@ body {
     transition: background-color 0.3s;
 }
 
-.sidebar a:hover {
+.sidebar a:hover, .sidebar a.active {
     background-color: #3498db;
 }
 
@@ -80,18 +83,26 @@ body {
 
 /* Main content styling */
 .main-content {
-    padding: 60px 20px 20px 20px;
+    margin-left: 250px;
+    padding: 20px;
+    width: calc(100% - 250px);
     min-height: 100vh;
     transition: margin-left 0.3s ease;
 }
 
-section {
-    display: none;
+.content {
     background-color: #fff;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
+}
+
+section {
+    display: none;
+}
+
+section#dashboard {
+    display: block;
 }
 
 section h2 {
@@ -102,9 +113,6 @@ section h2 {
 section p {
     color: #7f8c8d;
 }
-
-/* Show the active section */
-#dashboard { display: block; }
 
 /* Buttons */
 button, .add-learner-btn, .add-fee-btn, .add-book-btn, .add-class-book-btn {
@@ -130,11 +138,15 @@ button:hover, .add-learner-btn:hover, .add-fee-btn:hover, .add-book-btn:hover, .
     background-color: #d35400;
 }
 
-#downloadLearnersBtn, #downloadFeesBtn {
+#downloadLearnersExcelBtn, #downloadLearnersWordBtn, #downloadLearnersPdfBtn,
+#downloadFeesExcelBtn, #downloadFeesWordBtn, #downloadFeesPdfBtn,
+#downloadBooksExcelBtn, #downloadBooksWordBtn, #downloadBooksPdfBtn {
     background-color: #27ae60;
 }
 
-#downloadLearnersBtn:hover, #downloadFeesBtn:hover {
+#downloadLearnersExcelBtn:hover, #downloadLearnersWordBtn:hover, #downloadLearnersPdfBtn:hover,
+#downloadFeesExcelBtn:hover, #downloadFeesWordBtn:hover, #downloadFeesPdfBtn:hover,
+#downloadBooksExcelBtn:hover, #downloadBooksWordBtn:hover, #downloadBooksPdfBtn:hover {
     background-color: #219653;
 }
 
@@ -189,22 +201,6 @@ table button:nth-child(2) {
 
 table button:nth-child(2):hover {
     background-color: #c0392b;
-}
-
-/* Pagination */
-.pagination {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.pagination button {
-    background-color: #3498db;
-    margin: 0 5px;
-}
-
-.pagination span {
-    margin: 0 10px;
-    color: #7f8c8d;
 }
 
 /* Modals */
@@ -282,33 +278,52 @@ table button:nth-child(2):hover {
     background-color: #c0392b;
 }
 
+/* Fee Structure Form */
+#feeStructureForm {
+    display: grid;
+    gap: 10px;
+}
+
+#feeStructureForm label {
+    margin: 5px 0;
+}
+
+#feeStructureForm input {
+    width: 100%;
+}
+
+/* Term Settings Form */
+#termSettingsForm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 /* Transfer Requests Section */
-#transferRequests textarea {
+#transferRequests input {
     width: 100%;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
-    resize: vertical;
 }
 
 /* Responsive Design */
-@media (min-width: 769px) {
+@media (max-width: 768px) {
     .sidebar {
-        left: 0;
+        transform: translateX(-100%);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
     }
 
     .main-content {
-        margin-left: 250px;
+        margin-left: 0;
+        width: 100%;
     }
 
     .hamburger {
-        display: none;
-    }
-}
-
-@media (max-width: 768px) {
-    .main-content {
-        margin-left: 0;
+        display: block;
     }
 
     table th, table td {
@@ -321,5 +336,10 @@ table button:nth-child(2):hover {
         width: 95%;
         margin: 10% auto;
         max-height: 65vh;
+    }
+
+    table th, table td {
+        font-size: 0.9em;
+        padding: 6px;
     }
 }
