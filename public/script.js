@@ -2,12 +2,21 @@
 
 // Utility function to fetch data with timeout and retry logic
 async function fetchData(endpoint, retries = 1) {
+    const baseUrl = '';
+    const fullUrl = `${baseUrl}${endpoint}`;
+
     for (let attempt = 1; attempt <= retries + 1; attempt++) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-            const response = await fetch(endpoint, { signal: controller.signal });
+            const response = await fetch(fullUrl, {
+                signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
             clearTimeout(timeoutId);
 
             if (!response.ok) {
@@ -16,22 +25,21 @@ async function fetchData(endpoint, retries = 1) {
             }
             return await response.json();
         } catch (error) {
-            console.error(`Attempt ${attempt} failed for ${endpoint}:`, error.message);
+            console.error(`Attempt ${attempt} failed for ${fullUrl}:`, error.message);
             if (attempt === retries + 1) {
-                console.error(`All attempts failed for ${endpoint}. Returning default value.`);
-                // Return default values based on the endpoint
+                console.error(`All attempts failed for ${fullUrl}. Returning default value.`);
                 if (endpoint.includes('/api/learners') || endpoint.includes('/api/fees') || 
                     endpoint.includes('/api/books') || endpoint.includes('/api/classBooks') || 
                     endpoint.includes('/api/learnerArchives')) {
-                    return []; // Default for arrays
+                    return [];
                 } else if (endpoint.includes('/api/feeStructure')) {
-                    return {}; // Default for fee structure
+                    return {};
                 } else if (endpoint.includes('/api/termSettings')) {
-                    return { currentTerm: 'Term 1', currentYear: new Date().getFullYear() }; // Default for term settings
+                    return { currentTerm: 'Term 1', currentYear: new Date().getFullYear() };
                 }
-                throw error; // If no default value is defined, rethrow the error
+                throw error;
             }
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
 }
@@ -46,7 +54,7 @@ async function loadDashboardData() {
             fetchData('/api/classBooks'),
             fetchData('/api/feeStructure'),
             fetchData('/api/termSettings'),
-            fetchData('/api/learnerArchives/years')
+            fetchData('/api/learnerArchives')
         ]);
 
         console.log('Fetched dashboard data:', { learners, fees, books, classBooks, feeStructure, termSettings, archivedYears });
@@ -55,33 +63,54 @@ async function loadDashboardData() {
         updateDashboard(learners, fees, books, classBooks, feeStructure, termSettings, archivedYears);
     } catch (error) {
         console.error('Failed to load dashboard data:', error.message);
-        // Instead of showing an error, update the dashboard with default values
-        updateDashboard([], [], [], [], {}, { currentTerm: 'Term 1', currentYear: new Date().getFullYear() }, []);
+        // Update the dashboard with default values
+        const defaultTermSettings = { currentTerm: 'Term 1', currentYear: new Date().getFullYear() };
+        updateDashboard([], [], [], [], {}, defaultTermSettings, []);
         alert('Unable to connect to the database. Displaying default values. Please try again later.');
     }
 }
 
 // Update dashboard UI
 function updateDashboard(learners, fees, books, classBooks, feeStructure, termSettings, archivedYears) {
+    // Ensure elements exist before updating
+    const learnerCountEl = document.getElementById('learnerCount');
+    const totalFeesPaidEl = document.getElementById('totalFeesPaid');
+    const bookCountEl = document.getElementById('bookCount');
+    const classBookCountEl = document.getElementById('classBookCount');
+    const currentTermEl = document.getElementById('currentTerm');
+    const currentYearEl = document.getElementById('currentYear');
+    const archiveSelect = document.getElementById('archiveYearSelect');
+
     // Update learner count
-    document.getElementById('learnerCount').textContent = learners.length;
+    if (learnerCountEl) {
+        learnerCountEl.textContent = learners.length;
+    }
 
     // Update total fees paid
-    const totalFeesPaid = fees.reduce((sum, fee) => sum + fee.amountPaid, 0);
-    document.getElementById('totalFeesPaid').textContent = totalFeesPaid;
+    if (totalFeesPaidEl) {
+        const totalFeesPaid = fees.reduce((sum, fee) => sum + (fee.amountPaid || 0), 0);
+        totalFeesPaidEl.textContent = totalFeesPaid;
+    }
 
     // Update book count
-    document.getElementById('bookCount').textContent = books.length;
+    if (bookCountEl) {
+        bookCountEl.textContent = books.length;
+    }
 
     // Update class book count
-    document.getElementById('classBookCount').textContent = classBooks.length;
+    if (classBookCountEl) {
+        classBookCountEl.textContent = classBooks.length;
+    }
 
     // Update term settings
-    document.getElementById('currentTerm').textContent = termSettings.currentTerm;
-    document.getElementById('currentYear').textContent = termSettings.currentYear;
+    if (currentTermEl) {
+        currentTermEl.textContent = termSettings.currentTerm || 'Term 1';
+    }
+    if (currentYearEl) {
+        currentYearEl.textContent = termSettings.currentYear || new Date().getFullYear();
+    }
 
     // Populate archived years dropdown (if applicable)
-    const archiveSelect = document.getElementById('archiveYearSelect');
     if (archiveSelect) {
         archiveSelect.innerHTML = '<option value="">Select Year</option>';
         archivedYears.forEach(year => {
@@ -98,24 +127,25 @@ async function loadLearners() {
     try {
         const learners = await fetchData('/api/learners');
         const tbody = document.querySelector('#learnersTable tbody');
-        tbody.innerHTML = '';
-
-        learners.forEach(learner => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${learner.fullName}</td>
-                <td>${learner.gender}</td>
-                <td>${learner.dob}</td>
-                <td>${learner.grade}</td>
-                <td>${learner.parentName}</td>
-                <td>${learner.parentPhone}</td>
-                <td>
-                    <button onclick="editLearner('${learner._id}')">Edit</button>
-                    <button onclick="deleteLearner('${learner._id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+        if (tbody) {
+            tbody.innerHTML = '';
+            learners.forEach(learner => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${learner.fullName}</td>
+                    <td>${learner.gender}</td>
+                    <td>${learner.dob}</td>
+                    <td>${learner.grade}</td>
+                    <td>${learner.parentName}</td>
+                    <td>${learner.parentPhone}</td>
+                    <td>
+                        <button onclick="editLearner('${learner._id}')">Edit</button>
+                        <button onclick="deleteLearner('${learner._id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     } catch (error) {
         console.error('Failed to load learners:', error.message);
         alert('Failed to load learners. Please try again later.');
@@ -131,7 +161,7 @@ async function getNextAdmissionNo() {
         return `MPA-${String(lastNumber + 1).padStart(3, '0')}`;
     } catch (error) {
         console.error('Error generating admission number:', error.message);
-        return 'MPA-001'; // Fallback
+        return 'MPA-001';
     }
 }
 
@@ -177,8 +207,7 @@ async function addLearner(event) {
 // Edit a learner
 async function editLearner(id) {
     try {
-        const learner = await fetchData(`/api/learners/${id}`);
-        // Populate form with learner data
+        const learner = await fetchData(`/api/learners?id=${id}`);
         document.getElementById('learnerId').value = learner._id;
         document.getElementById('fullName').value = learner.fullName;
         document.getElementById('gender').value = learner.gender;
@@ -189,7 +218,6 @@ async function editLearner(id) {
         document.getElementById('parentPhone').value = learner.parentPhone;
         document.getElementById('parentEmail').value = learner.parentEmail;
 
-        // Change form submission to update
         const form = document.getElementById('learnerForm');
         form.onsubmit = async (event) => {
             event.preventDefault();
@@ -206,7 +234,7 @@ async function editLearner(id) {
             };
 
             try {
-                const response = await fetch(`/api/learners/${id}`, {
+                const response = await fetch(`/api/learners?id=${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedLearner)
@@ -219,7 +247,7 @@ async function editLearner(id) {
 
                 alert('Learner updated successfully');
                 form.reset();
-                form.onsubmit = addLearner; // Reset form submission to add
+                form.onsubmit = addLearner;
                 loadLearners();
             } catch (error) {
                 console.error('Failed to update learner:', error.message);
@@ -237,7 +265,7 @@ async function deleteLearner(id) {
     if (!confirm('Are you sure you want to delete this learner?')) return;
 
     try {
-        const response = await fetch(`/api/learners/${id}`, {
+        const response = await fetch(`/api/learners?id=${id}`, {
             method: 'DELETE'
         });
 
@@ -259,22 +287,23 @@ async function loadFees() {
     try {
         const fees = await fetchData('/api/fees');
         const tbody = document.querySelector('#feesTable tbody');
-        tbody.innerHTML = '';
-
-        fees.forEach(fee => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${fee.admissionNo}</td>
-                <td>${fee.term}</td>
-                <td>${fee.amountPaid}</td>
-                <td>${fee.balance}</td>
-                <td>
-                    <button onclick="editFee('${fee._id}')">Edit</button>
-                    <button onclick="deleteFee('${fee._id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+        if (tbody) {
+            tbody.innerHTML = '';
+            fees.forEach(fee => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${fee.admissionNo}</td>
+                    <td>${fee.term}</td>
+                    <td>${fee.amountPaid}</td>
+                    <td>${fee.balance}</td>
+                    <td>
+                        <button onclick="editFee('${fee._id}')">Edit</button>
+                        <button onclick="deleteFee('${fee._id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     } catch (error) {
         console.error('Failed to load fees:', error.message);
         alert('Failed to load fees. Please try again later.');
@@ -317,7 +346,7 @@ async function addFee(event) {
 // Edit a fee
 async function editFee(id) {
     try {
-        const fee = await fetchData(`/api/fees/${id}`);
+        const fee = await fetchData(`/api/fees?id=${id}`);
         document.getElementById('feeId').value = fee._id;
         document.getElementById('admissionNo').value = fee.admissionNo;
         document.getElementById('term').value = fee.term;
@@ -336,7 +365,7 @@ async function editFee(id) {
             };
 
             try {
-                const response = await fetch(`/api/fees/${id}`, {
+                const response = await fetch(`/api/fees?id=${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedFee)
@@ -367,7 +396,7 @@ async function deleteFee(id) {
     if (!confirm('Are you sure you want to delete this fee?')) return;
 
     try {
-        const response = await fetch(`/api/fees/${id}`, {
+        const response = await fetch(`/api/fees?id=${id}`, {
             method: 'DELETE'
         });
 
@@ -389,21 +418,22 @@ async function loadBooks() {
     try {
         const books = await fetchData('/api/books');
         const tbody = document.querySelector('#booksTable tbody');
-        tbody.innerHTML = '';
-
-        books.forEach(book => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${book.admissionNo}</td>
-                <td>${book.subject}</td>
-                <td>${book.bookTitle}</td>
-                <td>
-                    <button onclick="editBook('${book._id}')">Edit</button>
-                    <button onclick="deleteBook('${book._id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+        if (tbody) {
+            tbody.innerHTML = '';
+            books.forEach(book => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${book.admissionNo}</td>
+                    <td>${book.subject}</td>
+                    <td>${book.bookTitle}</td>
+                    <td>
+                        <button onclick="editBook('${book._id}')">Edit</button>
+                        <button onclick="deleteBook('${book._id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     } catch (error) {
         console.error('Failed to load books:', error.message);
         alert('Failed to load books. Please try again later.');
@@ -445,7 +475,7 @@ async function addBook(event) {
 // Edit a book
 async function editBook(id) {
     try {
-        const book = await fetchData(`/api/books/${id}`);
+        const book = await fetchData(`/api/books?id=${id}`);
         document.getElementById('bookId').value = book._id;
         document.getElementById('admissionNo').value = book.admissionNo;
         document.getElementById('subject').value = book.subject;
@@ -462,7 +492,7 @@ async function editBook(id) {
             };
 
             try {
-                const response = await fetch(`/api/books/${id}`, {
+                const response = await fetch(`/api/books?id=${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedBook)
@@ -493,7 +523,7 @@ async function deleteBook(id) {
     if (!confirm('Are you sure you want to delete this book?')) return;
 
     try {
-        const response = await fetch(`/api/books/${id}`, {
+        const response = await fetch(`/api/books?id=${id}`, {
             method: 'DELETE'
         });
 
@@ -515,22 +545,23 @@ async function loadClassBooks() {
     try {
         const classBooks = await fetchData('/api/classBooks');
         const tbody = document.querySelector('#classBooksTable tbody');
-        tbody.innerHTML = '';
-
-        classBooks.forEach(classBook => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${classBook.bookNumber}</td>
-                <td>${classBook.subject}</td>
-                <td>${classBook.description}</td>
-                <td>${classBook.totalBooks}</td>
-                <td>
-                    <button onclick="editClassBook('${classBook._id}')">Edit</button>
-                    <button onclick="deleteClassBook('${classBook._id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+        if (tbody) {
+            tbody.innerHTML = '';
+            classBooks.forEach(classBook => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${classBook.bookNumber}</td>
+                    <td>${classBook.subject}</td>
+                    <td>${classBook.description}</td>
+                    <td>${classBook.totalBooks}</td>
+                    <td>
+                        <button onclick="editClassBook('${classBook._id}')">Edit</button>
+                        <button onclick="deleteClassBook('${classBook._id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     } catch (error) {
         console.error('Failed to load class books:', error.message);
         alert('Failed to load class books. Please try again later.');
@@ -573,7 +604,7 @@ async function addClassBook(event) {
 // Edit a class book
 async function editClassBook(id) {
     try {
-        const classBook = await fetchData(`/api/classBooks/${id}`);
+        const classBook = await fetchData(`/api/classBooks?id=${id}`);
         document.getElementById('classBookId').value = classBook._id;
         document.getElementById('bookNumber').value = classBook.bookNumber;
         document.getElementById('subject').value = classBook.subject;
@@ -592,7 +623,7 @@ async function editClassBook(id) {
             };
 
             try {
-                const response = await fetch(`/api/classBooks/${id}`, {
+                const response = await fetch(`/api/classBooks?id=${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedClassBook)
@@ -623,7 +654,7 @@ async function deleteClassBook(id) {
     if (!confirm('Are you sure you want to delete this class book?')) return;
 
     try {
-        const response = await fetch(`/api/classBooks/${id}`, {
+        const response = await fetch(`/api/classBooks?id=${id}`, {
             method: 'DELETE'
         });
 
@@ -705,8 +736,8 @@ async function saveFeeStructure(event) {
 async function loadTermSettings() {
     try {
         const termSettings = await fetchData('/api/termSettings');
-        document.getElementById('currentTerm').value = termSettings.currentTerm;
-        document.getElementById('currentYear').value = termSettings.currentYear;
+        document.getElementById('currentTerm').value = termSettings.currentTerm || 'Term 1';
+        document.getElementById('currentYear').value = termSettings.currentYear || new Date().getFullYear();
     } catch (error) {
         console.error('Failed to load term settings:', error.message);
         alert('Failed to load term settings. Please try again later.');
@@ -736,7 +767,7 @@ async function saveTermSettings(event) {
         }
 
         alert('Term settings saved successfully');
-        loadDashboardData(); // Update dashboard
+        loadDashboardData();
     } catch (error) {
         console.error('Failed to save term settings:', error.message);
         alert('Failed to save term settings. Please try again.');
@@ -772,22 +803,23 @@ async function loadArchivedLearners() {
     if (!year) return;
 
     try {
-        const learners = await fetchData(`/api/learnerArchives/${year}`);
+        const learners = await fetchData(`/api/learnerArchives?year=${year}`);
         const tbody = document.querySelector('#archivedLearnersTable tbody');
-        tbody.innerHTML = '';
-
-        learners.forEach(learner => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${learner.fullName}</td>
-                <td>${learner.gender}</td>
-                <td>${learner.dob}</td>
-                <td>${learner.grade}</td>
-                <td>${learner.parentName}</td>
-                <td>${learner.parentPhone}</td>
-            `;
-            tbody.appendChild(row);
-        });
+        if (tbody) {
+            tbody.innerHTML = '';
+            learners.forEach(learner => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${learner.fullName}</td>
+                    <td>${learner.gender}</td>
+                    <td>${learner.dob}</td>
+                    <td>${learner.grade}</td>
+                    <td>${learner.parentName}</td>
+                    <td>${learner.parentPhone}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     } catch (error) {
         console.error('Failed to load archived learners:', error.message);
         alert('Failed to load archived learners. Please try again later.');
@@ -802,25 +834,25 @@ document.addEventListener('DOMContentLoaded', () => {
         loadDashboardData();
     } else if (path === '/learners.html') {
         loadLearners();
-        document.getElementById('learnerForm').addEventListener('submit', addLearner);
+        document.getElementById('learnerForm')?.addEventListener('submit', addLearner);
     } else if (path === '/fees.html') {
         loadFees();
-        document.getElementById('feeForm').addEventListener('submit', addFee);
+        document.getElementById('feeForm')?.addEventListener('submit', addFee);
     } else if (path === '/books.html') {
         loadBooks();
-        document.getElementById('bookForm').addEventListener('submit', addBook);
+        document.getElementById('bookForm')?.addEventListener('submit', addBook);
     } else if (path === '/classBooks.html') {
         loadClassBooks();
-        document.getElementById('classBookForm').addEventListener('submit', addClassBook);
+        document.getElementById('classBookForm')?.addEventListener('submit', addClassBook);
     } else if (path === '/feeStructure.html') {
         loadFeeStructure();
-        document.getElementById('feeStructureForm').addEventListener('submit', saveFeeStructure);
+        document.getElementById('feeStructureForm')?.addEventListener('submit', saveFeeStructure);
     } else if (path === '/termSettings.html') {
         loadTermSettings();
-        document.getElementById('termSettingsForm').addEventListener('submit', saveTermSettings);
+        document.getElementById('termSettingsForm')?.addEventListener('submit', saveTermSettings);
         document.getElementById('newAcademicYearBtn')?.addEventListener('click', startNewAcademicYear);
     } else if (path === '/learnerArchive.html') {
-        loadDashboardData(); // To populate the years dropdown
-        document.getElementById('archiveYearSelect').addEventListener('change', loadArchivedLearners);
+        loadDashboardData();
+        document.getElementById('archiveYearSelect')?.addEventListener('change', loadArchivedLearners);
     }
 });
