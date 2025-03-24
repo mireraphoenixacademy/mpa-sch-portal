@@ -4,12 +4,133 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Management System</title>
-    <link rel="stylesheet" href="styles.css">
     <!-- Libraries for Excel, Word, and PDF downloads -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-docx-js/0.3.1/html-docx.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .sidebar {
+            width: 200px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            height: 100vh;
+            position: fixed;
+        }
+        .sidebar h1 {
+            font-size: 24px;
+            margin: 0 0 20px;
+        }
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 10px;
+            text-decoration: none;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .sidebar a:hover {
+            background-color: #34495e;
+        }
+        .sidebar a.active {
+            background-color: #3498db;
+        }
+        .main-content {
+            flex: 1;
+            margin-left: 200px;
+            padding: 20px;
+            background-color: #ecf0f1;
+        }
+        .content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .content h2 {
+            margin-top: 0;
+        }
+        .content button {
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        .content button:hover {
+            background-color: #d35400;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .hamburger {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .hamburger {
+                display: block;
+                font-size: 24px;
+                cursor: pointer;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Login Modal -->
@@ -30,7 +151,7 @@
     <div id="mainApp" style="display: none;">
         <div class="sidebar">
             <h1>School Management</h1>
-            <a href="#dashboard">Dashboard</a>
+            <a href="#dashboard" class="active">Dashboard</a>
             <a href="#learners">Manage Learners</a>
             <a href="#fees">Manage Fees</a>
             <a href="#books">Manage Books</a>
@@ -46,8 +167,12 @@
                 <!-- Dashboard Section -->
                 <section id="dashboard">
                     <h2>Dashboard</h2>
-                    <p>Welcome to the School Management System. Current Term: <span id="currentTermYear"></span></p>
-                    <button id="newAcademicYearBtn">Start New Academic Year</button>
+                    <p>Welcome to the School Management System. Current Term: <span id="currentTerm"></span>, Year: <span id="currentYear"></span></p>
+                    <p>Total Learners: <span id="learnerCount">0</span></p>
+                    <p>Total Fees Paid: <span id="totalFeesPaid">0</span></p>
+                    <p>Total Books: <span id="bookCount">0</span></p>
+                    <p>Total Class Books: <span id="classBookCount">0</span></p>
+                    <button id="newAcademicYearBtn" onclick="startNewAcademicYear()">Start New Academic Year</button>
                 </section>
 
                 <!-- Learners Section -->
